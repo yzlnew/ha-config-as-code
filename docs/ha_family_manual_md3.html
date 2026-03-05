@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>智能家居手册</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    /* ========== M3 Baseline Design Tokens ========== */
+    :root {
+      --md-sys-color-primary: #5E3E9F;
+      --md-sys-color-on-primary: #FFFFFF;
+      --md-sys-color-primary-container: #ECDEFF;
+      --md-sys-color-on-primary-container: #250C56;
+      
+      --md-sys-color-secondary: #5F5A6A;
+      --md-sys-color-on-secondary: #FFFFFF;
+      --md-sys-color-secondary-container: #EDE2FF;
+      --md-sys-color-on-secondary-container: #1F1931;
+
+      --md-sys-color-surface: #FEF7FF;
+      --md-sys-color-on-surface: #1D1B20;
+      --md-sys-color-on-surface-variant: #4A4458;
+      --md-sys-color-surface-container: #F3EDF7;
+      --md-sys-color-surface-container-low: #F7F2FA;
+      --md-sys-color-surface-container-high: #ECE6F0;
+      --md-sys-color-outline: #79747E;
+      --md-sys-color-outline-variant: #CAC4D0;
+      --md-sys-color-shadow: rgba(44, 28, 77, 0.12);
+
+      /* Shapes */
+      --md-sys-shape-corner-extra-small: 4px;
+      --md-sys-shape-corner-small: 10px;
+      --md-sys-shape-corner-medium: 16px;
+      --md-sys-shape-corner-large: 24px;
+      --md-sys-shape-corner-extra-large: 32px;
+
+      --sheet-max-width: 1360px;
+    }
+
+    /* ========== Reset & Base ========== */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: 'Noto Sans SC', 'Roboto', system-ui, sans-serif;
+      background-color: var(--md-sys-color-surface);
+      color: var(--md-sys-color-on-surface);
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* ========== Top App Bar ========== */
+    .top-app-bar {
+      height: 64px;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      background-color: var(--md-sys-color-surface);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 1px solid var(--md-sys-color-outline-variant);
+    }
+
+    .top-app-bar h1 {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      margin-left: 16px;
+    }
+
+    /* ========== Layout Container ========== */
+    .main-wrapper {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      max-width: var(--sheet-max-width);
+      margin: 0 auto;
+    }
+
+    @media (max-width: 900px) {
+      .main-wrapper { grid-template-columns: 1fr; }
+      .navigation-drawer { 
+        position: fixed; 
+        left: -300px; 
+        background: var(--md-sys-color-surface);
+        z-index: 90;
+        transition: left 0.3s;
+      }
+      .navigation-drawer.open { left: 0; box-shadow: 4px 0 10px rgba(0,0,0,0.1); }
+    }
+
+    /* ========== Navigation Drawer ========== */
+    .navigation-drawer {
+      padding: 12px;
+      height: calc(100vh - 64px);
+      position: sticky;
+      top: 64px;
+      border-right: 1px solid var(--md-sys-color-outline-variant);
+      background: linear-gradient(180deg, #faf5ff 0%, #fef7ff 100%);
+    }
+
+    .nav-label {
+      padding: 16px 16px 8px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--md-sys-color-secondary);
+      letter-spacing: 0.5px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      height: 56px;
+      padding: 0 16px;
+      border-radius: var(--md-sys-shape-corner-large);
+      cursor: pointer;
+      font-weight: 500;
+      color: var(--md-sys-color-on-surface-variant);
+      transition: background-color 0.2s, transform 0.2s;
+      margin-bottom: 4px;
+    }
+
+    .nav-item:hover { background-color: var(--md-sys-color-surface-container-high); }
+    .nav-item:active { transform: scale(0.99); }
+    .nav-item.active {
+      background-color: var(--md-sys-color-secondary-container);
+      color: var(--md-sys-color-on-secondary-container);
+    }
+
+    .nav-item i { margin-right: 12px; font-style: normal; width: 24px; text-align: center; }
+
+    /* ========== Content Area ========== */
+    .content-area {
+      padding: 32px 32px 48px;
+      max-width: 1040px;
+    }
+
+    @media (max-width: 600px) {
+      .content-area { padding: 24px 16px; }
+    }
+
+    .section-content { display: none; animation: fadeIn 0.3s ease; }
+    .section-content.active { display: block; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    header {
+      margin-bottom: 24px;
+      border-radius: var(--md-sys-shape-corner-large);
+      background: linear-gradient(120deg, #efe6ff 0%, #f9f2ff 52%, #fff8f3 100%);
+      border: 1px solid #e3d4f8;
+      padding: 20px 22px;
+    }
+    header h2 {
+      font-size: 38px;
+      font-weight: 800;
+      line-height: 1.08;
+      margin-bottom: 10px;
+      letter-spacing: -0.3px;
+      color: var(--md-sys-color-on-primary-container);
+    }
+    header p { font-size: 15px; color: var(--md-sys-color-on-surface-variant); }
+
+    /* ========== Components ========== */
+    .section-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin: 20px 0 14px;
+      color: var(--md-sys-color-on-primary-container);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+      margin-bottom: 2px;
+    }
+
+    .m3-card {
+      background-color: var(--md-sys-color-surface-container-low);
+      border-radius: var(--md-sys-shape-corner-large);
+      padding: 18px;
+      margin-bottom: 12px;
+      border: 1px solid #e6ddee;
+      box-shadow: 0 1px 0 var(--md-sys-color-shadow);
+    }
+
+    .m3-card--outlined {
+      background-color: transparent;
+      border: 1px solid var(--md-sys-color-outline-variant);
+    }
+
+    .m3-card h3 { font-size: 19px; font-weight: 700; margin-bottom: 6px; line-height: 1.22; }
+    .m3-card .subtitle {
+      display: inline-flex;
+      align-items: center;
+      font-size: 11px;
+      letter-spacing: 0.6px;
+      color: #4c3d6b;
+      margin-bottom: 12px;
+      background-color: #f0e5ff;
+      border-radius: 999px;
+      padding: 4px 10px;
+    }
+
+    .m3-card p {
+      font-size: 14px;
+      color: var(--md-sys-color-on-surface-variant);
+      margin-bottom: 12px;
+    }
+
+    /* ========== Key Action List ========== */
+    .action-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 10px;
+    }
+
+    .action-item {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 12px;
+      background-color: var(--md-sys-color-surface-container);
+      border-radius: var(--md-sys-shape-corner-medium);
+      border: 1px solid #e1d8ea;
+    }
+
+    .action-item .label { font-size: 13px; font-weight: 600; line-height: 1.3; }
+    .action-item .trigger {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--md-sys-color-primary);
+      background-color: var(--md-sys-color-primary-container);
+      padding: 3px 8px;
+      border-radius: 999px;
+      align-self: flex-start;
+    }
+
+    /* Special Emphasis */
+    .action-item--primary {
+      background-color: var(--md-sys-color-primary);
+      color: var(--md-sys-color-on-primary);
+    }
+    .action-item--primary .trigger {
+      background-color: var(--md-sys-color-on-primary);
+      color: var(--md-sys-color-primary);
+    }
+
+    /* ========== Divider ========== */
+    hr { border: 0; height: 1px; background-color: var(--md-sys-color-outline-variant); margin: 24px 0; }
+
+    /* ========== Print: Single Sheet Guide ========== */
+    @page {
+      size: A4 portrait;
+      margin: 8mm;
+    }
+
+    @media print {
+      body {
+        background: #fff;
+        color: #1b1a1f;
+        font-size: 11px;
+        line-height: 1.28;
+      }
+
+      .top-app-bar,
+      .navigation-drawer,
+      #menu-toggle,
+      footer {
+        display: none !important;
+      }
+
+      .main-wrapper {
+        display: block;
+        max-width: 100%;
+      }
+
+      .content-area {
+        max-width: 100%;
+        padding: 0;
+      }
+
+      .section-content,
+      .section-content.active {
+        display: block !important;
+        animation: none !important;
+        margin-bottom: 5px;
+        break-inside: avoid;
+      }
+
+      header {
+        margin-bottom: 5px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        background: #f7f3ff !important;
+        border: 1px solid #d9d0e5;
+      }
+
+      header h2 {
+        font-size: 16px;
+        margin-bottom: 2px;
+        line-height: 1.1;
+        letter-spacing: 0;
+      }
+
+      header p {
+        font-size: 10px;
+      }
+
+      .section-title {
+        margin: 6px 0 5px;
+        font-size: 12px;
+      }
+
+      .grid,
+      .action-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .m3-card {
+        margin-bottom: 6px;
+        padding: 8px;
+        border-radius: 8px;
+        border: 1px solid #d9d1e2;
+        box-shadow: none;
+        background: #fff;
+      }
+
+      .m3-card h3 {
+        font-size: 12px;
+        margin-bottom: 3px;
+      }
+
+      .m3-card .subtitle {
+        margin-bottom: 5px;
+        font-size: 9px;
+        padding: 2px 7px;
+        background: #efe8f8;
+      }
+
+      .m3-card p {
+        font-size: 10px !important;
+        margin-bottom: 5px !important;
+      }
+
+      .action-item {
+        padding: 6px;
+        border-radius: 7px;
+        gap: 4px;
+      }
+
+      .action-item .label {
+        font-size: 10px;
+      }
+
+      .action-item .trigger {
+        font-size: 8.5px;
+        padding: 1px 6px;
+      }
+
+      hr {
+        margin: 8px 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top App Bar -->
+  <div class="top-app-bar">
+    <button id="menu-toggle" style="background:none; border:none; font-size: 24px; cursor: pointer; padding: 8px;">☰</button>
+    <h1>智能家居手册</h1>
+  </div>
+
+  <div class="main-wrapper">
+    <!-- Navigation Drawer -->
+    <nav class="navigation-drawer" id="nav-drawer">
+      <div class="nav-label">概览</div>
+      <div class="nav-item active" onclick="showSection('overview', event)"><i>📊</i> 总览</div>
+      
+      <div class="nav-label">空间</div>
+      <div class="nav-item" onclick="showSection('living', event)"><i>🛋️</i> 客厅</div>
+      <div class="nav-item" onclick="showSection('kitchen', event)"><i>🍳</i> 厨房 & 西厨</div>
+      <div class="nav-item" onclick="showSection('bedroom', event)"><i>🛏️</i> 卧室</div>
+      <div class="nav-item" onclick="showSection('other', event)"><i>🚿</i> 卫浴 & 书房</div>
+      
+      <hr>
+      <div class="nav-label">系统</div>
+      <div class="nav-item" onclick="showSection('features', event)"><i>✨</i> 智能功能</div>
+    </nav>
+
+    <!-- Content Area -->
+    <main class="content-area">
+      
+      <!-- SECTION: OVERVIEW -->
+      <div id="overview" class="section-content active">
+        <header>
+          <h2>总览</h2>
+          <p>墙面开关优先，手机为辅。长按与双击解锁高级操作。</p>
+        </header>
+
+        <div class="section-title">核心快捷操作</div>
+        <div class="grid">
+          <div class="m3-card">
+            <div class="subtitle">全局控制</div>
+            <h3>全屋关灯</h3>
+            <p style="font-size: 14px; color: #49454F; margin-bottom: 16px;">离开家或就寝前按一下，关闭所有非必要灯光。</p>
+            <div class="action-item--primary action-item">
+              <span class="label">操作位置：西厨入口开关</span>
+              <span class="trigger">左键长按</span>
+            </div>
+          </div>
+          
+          <div class="m3-card">
+            <div class="subtitle">睡眠模式</div>
+            <h3>睡眠模式</h3>
+            <p style="font-size: 14px; color: #49454F; margin-bottom: 16px;">关闭主卧相关灯光并调整窗帘状态。</p>
+            <div class="action-item">
+              <span class="label">操作位置：主卧三开开关</span>
+              <span class="trigger">中键单击</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION: LIVING ROOM -->
+      <div id="living" class="section-content">
+        <header>
+          <h2>客厅</h2>
+          <p>控制核心位于阳台柜侧的三开智能开关。</p>
+        </header>
+        <div class="m3-card m3-card--outlined">
+          <div class="subtitle">阳台柜侧开关 (三开)</div>
+          <div class="action-grid">
+            <div class="action-item"><span class="label">主灯开关</span><span class="trigger">左键单击</span></div>
+            <div class="action-item"><span class="label">氛围灯带</span><span class="trigger">左键双击</span></div>
+            <div class="action-item"><span class="label">客厅全关</span><span class="trigger">左键长按</span></div>
+            <div class="action-item"><span class="label">会客模式</span><span class="trigger">中键单击</span></div>
+            <div class="action-item"><span class="label">影音模式</span><span class="trigger">右键单击</span></div>
+            <div class="action-item"><span class="label">阳台窗帘</span><span class="trigger">右键双击</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION: KITCHEN -->
+      <div id="kitchen" class="section-content">
+        <header>
+          <h2>厨房 & 西厨</h2>
+          <p>西厨开关控制全屋总关，厨房开关支持精细调光。</p>
+        </header>
+        
+        <div class="m3-card m3-card--outlined">
+          <div class="subtitle">西厨入口开关 (三开)</div>
+          <div class="action-grid">
+            <div class="action-item"><span class="label">西厨照明</span><span class="trigger">左键单击</span></div>
+            <div class="action-item"><span class="label">橱柜灯带</span><span class="trigger">左键双击</span></div>
+            <div class="action-item--primary action-item"><span class="label">全屋关灯</span><span class="trigger">左键长按</span></div>
+            <div class="action-item"><span class="label">会客模式</span><span class="trigger">中键单击</span></div>
+            <div class="action-item"><span class="label">影音模式</span><span class="trigger">右键单击</span></div>
+          </div>
+        </div>
+
+        <div class="m3-card m3-card--outlined">
+          <div class="subtitle">厨房门口开关 (调光版三开)</div>
+          <div class="action-grid">
+            <div class="action-item"><span class="label">厨房照明</span><span class="trigger">左键单击</span></div>
+            <div class="action-item"><span class="label">西厨灯光</span><span class="trigger">左键双击</span></div>
+            <div class="action-item"><span class="label">厨房全关</span><span class="trigger">左键长按</span></div>
+            <div class="action-item"><span class="label">亮度增加/减少</span><span class="trigger">中键单击 / 双击</span></div>
+            <div class="action-item"><span class="label">色温变暖/变冷</span><span class="trigger">右键单击 / 双击</span></div>
+            <div class="action-item"><span class="label">恢复自适应</span><span class="trigger">中或右键长按</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION: BEDROOM -->
+      <div id="bedroom" class="section-content">
+        <header>
+          <h2>卧室</h2>
+          <p>主卧与次卧均支持一键全关与窗帘控制。</p>
+        </header>
+        
+        <div class="m3-card m3-card--outlined">
+          <div class="subtitle">主卧开关 (三开/多联)</div>
+          <div class="action-grid">
+            <div class="action-item"><span class="label">主卧照明</span><span class="trigger">左键单击</span></div>
+            <div class="action-item"><span class="label">主卧灯带</span><span class="trigger">左键双击</span></div>
+            <div class="action-item"><span class="label">主卧全关</span><span class="trigger">左键长按</span></div>
+            <div class="action-item--primary action-item"><span class="label">睡眠模式</span><span class="trigger">中键单击</span></div>
+            <div class="action-item"><span class="label">主卧窗帘</span><span class="trigger">右键单击</span></div>
+          </div>
+        </div>
+
+        <div class="m3-card m3-card--outlined">
+          <div class="subtitle">次卧开关</div>
+          <div class="action-grid">
+            <div class="action-item"><span class="label">次卧照明</span><span class="trigger">左键单击</span></div>
+            <div class="action-item"><span class="label">次卧灯带</span><span class="trigger">左键双击</span></div>
+            <div class="action-item"><span class="label">次卧全关</span><span class="trigger">左键长按</span></div>
+            <div class="action-item"><span class="label">次卧窗帘</span><span class="trigger">右键单击</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION: OTHER -->
+      <div id="other" class="section-content">
+        <header>
+          <h2>卫浴 & 书房</h2>
+          <p>简单的双开逻辑，长按均可实现区域全关。</p>
+        </header>
+        
+        <div class="m3-card m3-card--outlined">
+          <div class="subtitle">卫浴 (主卫/次卫)</div>
+          <div class="action-grid">
+            <div class="action-item"><span class="label">卫浴灯光</span><span class="trigger">左键单击</span></div>
+            <div class="action-item"><span class="label">卫浴全关</span><span class="trigger">左键长按</span></div>
+            <div class="action-item"><span class="label">排气扇</span><span class="trigger">右键单击</span></div>
+          </div>
+        </div>
+
+        <div class="m3-card m3-card--outlined">
+          <div class="subtitle">书房</div>
+          <div class="action-grid">
+            <div class="action-item"><span class="label">书房照明</span><span class="trigger">左键单击</span></div>
+            <div class="action-item"><span class="label">书房灯带</span><span class="trigger">左键双击</span></div>
+            <div class="action-item"><span class="label">书房全关</span><span class="trigger">左键长按</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION: FEATURES -->
+      <div id="features" class="section-content">
+        <header>
+          <h2>智能功能</h2>
+          <p>无需手动操作，系统自动为您打理一切。</p>
+        </header>
+        
+        <div class="m3-card">
+          <h3>自适应灯光</h3>
+          <p style="font-size: 14px; margin-top: 8px;">根据当地时间自动调节亮度和色温。白天为 4000K 冷白光提高专注度，日落后逐渐变为 2700K 暖黄光助眠。</p>
+        </div>
+
+        <div class="m3-card">
+          <h3>人体感应</h3>
+          <p style="font-size: 14px; margin-top: 8px;">卫生间和玄关配有人体存在传感器。感应到人自动开启，离开后 5-10 分钟自动关闭。</p>
+        </div>
+
+        <div class="m3-card">
+          <h3>离家守护</h3>
+          <p style="font-size: 14px; margin-top: 8px;">最后一人离开家后，自动确认关闭全屋灯光、窗帘和非必要插座。天黑后检测到有人归家，自动开启迎宾灯光。</p>
+        </div>
+      </div>
+
+      <footer style="margin-top: 80px; padding-bottom: 40px; text-align: center; color: var(--md-sys-color-outline); font-size: 12px;">
+        &copy; 2026 智能家居控制系统
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    // 页面切换逻辑
+    function showSection(sectionId, clickEvent) {
+      // 隐藏所有部分
+      document.querySelectorAll('.section-content').forEach(section => {
+        section.classList.remove('active');
+      });
+      // 显示目标部分
+      document.getElementById(sectionId).classList.add('active');
+
+      // 更新导航项状态
+      document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+      });
+      if (clickEvent && clickEvent.currentTarget) {
+        clickEvent.currentTarget.classList.add('active');
+      }
+
+      // 移动端关闭抽屉
+      if (window.innerWidth <= 900) {
+        document.getElementById('nav-drawer').classList.remove('open');
+      }
+      
+      // 滚动回顶部
+      window.scrollTo(0, 0);
+    }
+
+    // 移动端菜单切换
+    document.getElementById('menu-toggle').onclick = function() {
+      document.getElementById('nav-drawer').classList.toggle('open');
+    }
+  </script>
+</body>
+</html>

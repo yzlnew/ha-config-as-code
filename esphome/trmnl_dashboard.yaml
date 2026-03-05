@@ -1,0 +1,556 @@
+esphome:
+  name: trmnl
+  friendly_name: TRMNL
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: arduino
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+logger:
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+  on_client_connected:
+    - delay: 5s
+    - component.update: main_display
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  manual_ip:
+    static_ip: 192.168.50.135
+    gateway: 192.168.50.1
+    subnet: 255.255.255.0
+  ap:
+    ssid: "Trmnl Fallback Hotspot"
+    password: !secret ap_password
+
+captive_portal:
+
+time:
+  - platform: homeassistant
+    id: ha_time
+
+font:
+  # 48px - clock
+  - file: "fonts/fusion-pixel-12px-proportional-zh_hans.ttf"
+    id: font_clock
+    size: 48
+    glyphs: "0123456789:"
+
+  # 32px - date
+  - file: "fonts/fusion-pixel-12px-proportional-zh_hans.ttf"
+    id: font_date
+    size: 32
+    glyphs: "0123456789年月日 周一二三四五六天"
+
+  # 24px - main text with MDI icons
+  - file: "fonts/fusion-pixel-12px-proportional-zh_hans.ttf"
+    id: font_large
+    size: 24
+    glyphs: "0123456789.:-°%/ ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz客厅晴多云阴小中大雨雪雾霾雷阵暴沙尘浮风冰雹天气温湿度体感甲醛₂₅₁₀今明后一二三四五六周日正常缺满砂水锁电量芯效碳素全门饮机猫厕所净化器"
+    extras:
+      - file: "fonts/materialdesignicons-webfont.ttf"
+        glyphs:
+          - "\U000F0590"  # mdi-weather-sunny
+          - "\U000F0595"  # mdi-weather-cloudy
+          - "\U000F0597"  # mdi-weather-rainy
+          - "\U000F0598"  # mdi-weather-pouring
+          - "\U000F0F36"  # mdi-weather-snowy-heavy
+          - "\U000F0591"  # mdi-weather-fog
+          - "\U000F067E"  # mdi-weather-lightning-rainy
+          - "\U000F059D"  # mdi-weather-windy
+          - "\U000F0596"  # mdi-weather-hail
+          - "\U000F0594"  # mdi-weather-partlycloudy (night)
+          - "\U000F050F"  # mdi-thermometer
+          - "\U000F058E"  # mdi-water-percent (humidity)
+          - "\U000F0438"  # mdi-air-filter
+          - "\U000F081C"  # mdi-lock
+          - "\U000F10CD"  # mdi-cat
+          - "\U000F058C"  # mdi-water
+          - "\U000F12A1"  # mdi-battery-medium
+
+  # 16px - secondary text
+  - file: "fonts/fusion-pixel-8px-proportional-zh_hans.ttf"
+    id: font_medium
+    size: 16
+    glyphs: "0123456789.:-°%/ ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz客厅温湿度体感甲醛今明后天一二三四五六周日中雾正常缺满砂水锁电量芯效碳素全门饮机猫厕所净化器"
+    extras:
+      - file: "fonts/materialdesignicons-webfont.ttf"
+        glyphs:
+          - "\U000F0590"  # mdi-weather-sunny
+          - "\U000F0595"  # mdi-weather-cloudy
+          - "\U000F0597"  # mdi-weather-rainy
+          - "\U000F0598"  # mdi-weather-pouring
+          - "\U000F0F36"  # mdi-weather-snowy-heavy
+          - "\U000F0591"  # mdi-weather-fog
+          - "\U000F067E"  # mdi-weather-lightning-rainy
+          - "\U000F059D"  # mdi-weather-windy
+          - "\U000F0596"  # mdi-weather-hail
+          - "\U000F0594"  # mdi-weather-partlycloudy
+          - "\U000F050F"  # mdi-thermometer
+          - "\U000F058E"  # mdi-water-percent
+          - "\U000F0438"  # mdi-air-filter
+          - "\U000F081C"  # mdi-lock
+          - "\U000F10CD"  # mdi-cat
+          - "\U000F058C"  # mdi-water
+          - "\U000F12A1"  # mdi-battery-medium
+
+  # 24px - MDI icons only (for standalone icon rendering)
+  - file: "fonts/materialdesignicons-webfont.ttf"
+    id: font_icon
+    size: 24
+    glyphs:
+      - "\U000F0590"  # mdi-weather-sunny
+      - "\U000F0595"  # mdi-weather-cloudy
+      - "\U000F0597"  # mdi-weather-rainy
+      - "\U000F0598"  # mdi-weather-pouring
+      - "\U000F0F36"  # mdi-weather-snowy-heavy
+      - "\U000F0591"  # mdi-weather-fog
+      - "\U000F067E"  # mdi-weather-lightning-rainy
+      - "\U000F059D"  # mdi-weather-windy
+      - "\U000F0596"  # mdi-weather-hail
+      - "\U000F0594"  # mdi-weather-partlycloudy
+      - "\U000F050F"  # mdi-thermometer
+      - "\U000F058E"  # mdi-water-percent
+      - "\U000F0438"  # mdi-air-filter
+      - "\U000F081C"  # mdi-lock
+      - "\U000F10CD"  # mdi-cat
+      - "\U000F058C"  # mdi-water
+      - "\U000F12A1"  # mdi-battery-medium
+
+# ── Pokemon pixel art ──────────────────────────────────────
+image:
+  - file: "images/pikachu.png"
+    id: img_pikachu
+    type: BINARY
+    transparency: chroma_key
+    resize: 96x96
+    invert_alpha: true
+
+  - file: "images/eevee.png"
+    id: img_eevee
+    type: BINARY
+    transparency: chroma_key
+    resize: 96x96
+    invert_alpha: true
+
+  - file: "images/snorlax.png"
+    id: img_snorlax
+    type: BINARY
+    transparency: chroma_key
+    resize: 96x96
+    invert_alpha: true
+
+  - file: "images/bulbasaur.png"
+    id: img_bulbasaur
+    type: BINARY
+    transparency: chroma_key
+    resize: 96x96
+    invert_alpha: true
+
+  - file: "images/gengar.png"
+    id: img_gengar
+    type: BINARY
+    transparency: chroma_key
+    resize: 96x96
+    invert_alpha: true
+
+# ── Sensors from Home Assistant ──────────────────────────────
+
+sensor:
+  # 客厅 air quality monitor
+  - platform: homeassistant
+    id: livingroom_temp
+    entity_id: sensor.xiaomi_cn_2008215373_ua3a_temperature_p_3_7
+    internal: true
+
+  - platform: homeassistant
+    id: livingroom_humidity
+    entity_id: sensor.xiaomi_cn_2008215373_ua3a_relative_humidity_p_3_1
+    internal: true
+
+  - platform: homeassistant
+    id: livingroom_pm25
+    entity_id: sensor.xiaomi_cn_2008215373_ua3a_pm2_5_density_p_3_4
+    internal: true
+
+  - platform: homeassistant
+    id: livingroom_co2
+    entity_id: sensor.xiaomi_cn_2008215373_ua3a_co2_density_p_3_8
+    internal: true
+
+  - platform: homeassistant
+    id: livingroom_pm10
+    entity_id: sensor.xiaomi_cn_2008215373_ua3a_pm10_density_p_3_5
+    internal: true
+
+  - platform: homeassistant
+    id: livingroom_hcho
+    entity_id: sensor.xiaomi_cn_2008215373_ua3a_hcho_density_p_3_10
+    internal: true
+
+  - platform: homeassistant
+    id: livingroom_tvoc
+    entity_id: sensor.xiaomi_cn_2008215373_ua3a_tvoc_density_p_3_9
+    internal: true
+
+  # Filter life
+  - platform: homeassistant
+    id: filter_full_effect
+    entity_id: sensor.xiaomi_cn_2008215373_ua3a_filter_life_level_p_4_1
+    internal: true
+
+  - platform: homeassistant
+    id: filter_carbon
+    entity_id: sensor.xiaomi_cn_2008215373_ua3a_filter_life_level_p_4_4
+    internal: true
+
+  - platform: homeassistant
+    id: filter_medium
+    entity_id: sensor.xiaomi_cn_2008215373_ua3a_filter_life_level_p_4_7
+    internal: true
+
+  # Door lock battery
+  - platform: homeassistant
+    id: door_lock_battery
+    entity_id: sensor.lumi_cn_1011935590_bzacn1_battery_level_p_4_1
+    internal: true
+
+  # Weather forecast temperatures
+  - platform: homeassistant
+    id: tomorrow_temp_high
+    entity_id: sensor.tomorrow_weather_temp_high
+    internal: true
+
+  - platform: homeassistant
+    id: tomorrow_temp_low
+    entity_id: sensor.tomorrow_weather_temp_low
+    internal: true
+
+  - platform: homeassistant
+    id: day_after_temp_high
+    entity_id: sensor.day_after_weather_temp_high
+    internal: true
+
+  - platform: homeassistant
+    id: day_after_temp_low
+    entity_id: sensor.day_after_weather_temp_low
+    internal: true
+
+  # Weather temperature from weather entity attribute
+  - platform: homeassistant
+    id: weather_temperature
+    entity_id: weather.forecast_wo_de_jia
+    attribute: temperature
+    internal: true
+
+  - platform: homeassistant
+    id: weather_humidity
+    entity_id: weather.forecast_wo_de_jia
+    attribute: humidity
+    internal: true
+
+binary_sensor:
+  - platform: homeassistant
+    id: cat_toilet_wastebin
+    entity_id: binary_sensor.zhi_neng_mao_ce_suo_max_wastebin_filled
+    internal: true
+
+  - platform: homeassistant
+    id: cat_toilet_sand_lack
+    entity_id: binary_sensor.zhi_neng_mao_ce_suo_max_sand_lack
+    internal: true
+
+  - platform: homeassistant
+    id: water_dispenser_lack
+    entity_id: binary_sensor.yin_shui_ji_max_zhen_wu_xian_water_lack_warning
+    internal: true
+
+text_sensor:
+  - platform: homeassistant
+    id: weather_state
+    entity_id: weather.forecast_wo_de_jia
+    internal: true
+
+  - platform: homeassistant
+    id: tomorrow_condition
+    entity_id: sensor.tomorrow_weather_condition
+    internal: true
+
+  - platform: homeassistant
+    id: day_after_condition
+    entity_id: sensor.day_after_weather_condition
+    internal: true
+
+spi:
+  clk_pin: GPIO7
+  mosi_pin: GPIO9
+
+interval:
+  - interval: 5min
+    then:
+      - component.update: main_display
+
+display:
+  - platform: waveshare_epaper
+    id: main_display
+    model: 7.50inv2
+    cs_pin: GPIO44
+    dc_pin: GPIO10
+    reset_pin: GPIO38
+    busy_pin:
+      number: GPIO4
+      inverted: true
+    update_interval: never
+    lambda: |-
+      const int W = 800;
+      const int H = 480;
+      const int M = 16;        // outer margin
+      const int G = 12;        // panel gap
+      const int title_h = 24;  // panel title strip height
+
+      auto weather_cn = [](const std::string &state) -> std::string {
+        if (state == "sunny" || state == "clear-night") return "晴";
+        if (state == "partlycloudy") return "多云";
+        if (state == "cloudy") return "阴";
+        if (state == "rainy") return "小雨";
+        if (state == "pouring") return "大雨";
+        if (state == "snowy") return "雪";
+        if (state == "fog") return "雾";
+        if (state == "lightning" || state == "lightning-rainy") return "雷阵雨";
+        if (state == "windy" || state == "windy-variant") return "大风";
+        if (state == "hail") return "冰雹";
+        return state;
+      };
+
+      auto weather_icon = [](const std::string &state) -> std::string {
+        if (state == "sunny" || state == "clear-night") return "\U000F0590";
+        if (state == "partlycloudy") return "\U000F0594";
+        if (state == "cloudy") return "\U000F0595";
+        if (state == "rainy") return "\U000F0597";
+        if (state == "pouring") return "\U000F0598";
+        if (state == "snowy") return "\U000F0F36";
+        if (state == "fog") return "\U000F0591";
+        if (state == "lightning" || state == "lightning-rainy") return "\U000F067E";
+        if (state == "windy" || state == "windy-variant") return "\U000F059D";
+        if (state == "hail") return "\U000F0596";
+        return "\U000F0595";
+      };
+
+      auto fmt1 = [](float v) -> std::string {
+        if (std::isnan(v)) return "--";
+        char buf[16];
+        snprintf(buf, sizeof(buf), "%.1f", v);
+        return buf;
+      };
+      auto fmt0 = [](float v) -> std::string {
+        if (std::isnan(v)) return "--";
+        char buf[16];
+        snprintf(buf, sizeof(buf), "%.0f", v);
+        return buf;
+      };
+      auto fmt2 = [](float v) -> std::string {
+        if (std::isnan(v)) return "--";
+        char buf[16];
+        snprintf(buf, sizeof(buf), "%.2f", v);
+        return buf;
+      };
+
+      auto clamp_i = [](int v, int lo, int hi) -> int {
+        if (v < lo) return lo;
+        if (v > hi) return hi;
+        return v;
+      };
+
+      auto pct = [&](float v) -> int {
+        if (std::isnan(v)) return -1;
+        return clamp_i((int) (v + 0.5f), 0, 100);
+      };
+
+      auto draw_panel = [&](int x, int y, int w, int h, const char *title) {
+        // Pokemon-like pixel frame: double border + title strip.
+        it.rectangle(x, y, w, h);
+        it.rectangle(x + 2, y + 2, w - 4, h - 4);
+        it.line(x + 2, y + title_h, x + w - 3, y + title_h);
+        it.printf(x + 10, y + 5, id(font_medium), "%s", title);
+      };
+
+      auto draw_meter = [&](int x, int y, int w, const char *label, int value, const char *suffix) {
+        int bar_x = x + 90;
+        int bar_w = w - 176;
+        if (bar_w < 36) bar_w = 36;
+
+        it.printf(x, y, id(font_medium), "%s", label);
+        it.rectangle(bar_x, y + 2, bar_w, 12);
+
+        if (value >= 0) {
+          int fill = (bar_w * value) / 100;
+          if (fill > 2) it.filled_rectangle(bar_x + 1, y + 3, fill - 2, 10);
+          it.printf(bar_x + bar_w + 8, y, id(font_medium), "%d%s", value, suffix);
+        } else {
+          it.printf(bar_x + bar_w + 8, y, id(font_medium), "--");
+        }
+      };
+
+      // Board layout (3 rows): top HUD, middle battle stats, bottom status menu.
+      const int top_h = 138;
+      const int mid_h = 168;
+      const int bottom_h = H - (M * 2) - top_h - mid_h - (G * 2);
+      const int top_y = M;
+      const int mid_y = top_y + top_h + G;
+      const int bot_y = mid_y + mid_h + G;
+
+      // TOP: Time + Date + rotating Pokemon sprite.
+      draw_panel(M, top_y, W - (M * 2), top_h, "POKEDEX HUD");
+      int panel_inner_x = M + 8;
+      int panel_inner_w = W - (M * 2) - 16;
+      int inner_y = top_y + title_h + 6;
+      int inner_h = top_h - title_h - 10;
+      int box_gap = 8;
+      int left_w = 250;
+      int right_w = 250;
+      int sprite_w = panel_inner_w - left_w - right_w - (box_gap * 2);
+      int left_x = panel_inner_x;
+      int sprite_x = left_x + left_w + box_gap;
+      int right_x = sprite_x + sprite_w + box_gap;
+
+      it.rectangle(left_x, inner_y, left_w, inner_h);
+      it.rectangle(right_x, inner_y, right_w, inner_h);
+      it.rectangle(sprite_x, inner_y, sprite_w, inner_h);
+
+      if (id(ha_time).now().is_valid()) {
+        auto t = id(ha_time).now();
+        int pokemon_idx = (t.minute / 5) % 5;
+        int px = sprite_x + (sprite_w - 96) / 2;
+        int py = inner_y + (inner_h - 96) / 2;
+        switch (pokemon_idx) {
+          case 0: it.image(px, py, id(img_pikachu)); break;
+          case 1: it.image(px, py, id(img_eevee)); break;
+          case 2: it.image(px, py, id(img_snorlax)); break;
+          case 3: it.image(px, py, id(img_bulbasaur)); break;
+          default: it.image(px, py, id(img_gengar)); break;
+        }
+
+        const char *weekdays[] = {"", "日", "一", "二", "三", "四", "五", "六"};
+        it.printf(left_x + left_w / 2, inner_y + 8, id(font_clock), TextAlign::TOP_CENTER,
+                  "%02d:%02d", t.hour, t.minute);
+        it.printf(right_x + right_w / 2, inner_y + 18, id(font_large), TextAlign::TOP_CENTER,
+                  "%04d/%02d/%02d", t.year, t.month, t.day_of_month);
+        it.printf(right_x + right_w / 2, inner_y + 50, id(font_large), TextAlign::TOP_CENTER,
+                  "周%s", weekdays[t.day_of_week]);
+      } else {
+        it.printf(left_x + 16, inner_y + 18, id(font_large), "--:--");
+        it.printf(right_x + 16, inner_y + 18, id(font_large), "----/--/--");
+      }
+
+      // MIDDLE: left weather battle box + right room stats box.
+      int mid_left_w = (W - (M * 2) - G) / 2;
+      int mid_right_w = mid_left_w;
+      int mid_left_x = M;
+      int mid_right_x = mid_left_x + mid_left_w + G;
+      draw_panel(mid_left_x, mid_y, mid_left_w, mid_h, "WEATHER DEX");
+      draw_panel(mid_right_x, mid_y, mid_right_w, mid_h, "ROOM STATS");
+
+      int weather_x = mid_left_x + 12;
+      int weather_y = mid_y + title_h + 6;
+      std::string now_state = id(weather_state).has_state() ? id(weather_state).state : "cloudy";
+      std::string now_cn = weather_cn(now_state);
+      std::string now_icon = weather_icon(now_state);
+
+      it.printf(weather_x, weather_y + 2, id(font_icon), "%s", now_icon.c_str());
+      it.printf(weather_x + 34, weather_y, id(font_large), "今天 %s", now_cn.c_str());
+      it.printf(weather_x + 34, weather_y + 30, id(font_large), "%s°C  \U000F058E %s%%",
+                fmt0(id(weather_temperature).state).c_str(),
+                fmt0(id(weather_humidity).state).c_str());
+
+      int card_y = weather_y + 60;
+      int small_w = (mid_left_w - 36) / 2;
+      int weather_card_h = 52;
+      it.rectangle(weather_x, card_y, small_w, weather_card_h);
+      it.rectangle(weather_x + small_w + 12, card_y, small_w, weather_card_h);
+
+      std::string tmr_state = id(tomorrow_condition).has_state() ? id(tomorrow_condition).state : "cloudy";
+      std::string day2_state = id(day_after_condition).has_state() ? id(day_after_condition).state : "cloudy";
+
+      it.printf(weather_x + 8, card_y + 6, id(font_medium), "明天");
+      it.printf(weather_x + 8, card_y + 20, id(font_icon), "%s", weather_icon(tmr_state).c_str());
+      it.printf(weather_x + 40, card_y + 24, id(font_medium), "%s/%s",
+                fmt0(id(tomorrow_temp_low).state).c_str(),
+                fmt0(id(tomorrow_temp_high).state).c_str());
+
+      int day2_x = weather_x + small_w + 12;
+      it.printf(day2_x + 8, card_y + 6, id(font_medium), "后天");
+      it.printf(day2_x + 8, card_y + 20, id(font_icon), "%s", weather_icon(day2_state).c_str());
+      it.printf(day2_x + 40, card_y + 24, id(font_medium), "%s/%s",
+                fmt0(id(day_after_temp_low).state).c_str(),
+                fmt0(id(day_after_temp_high).state).c_str());
+
+      int stat_x = mid_right_x + 12;
+      int stat_y = mid_y + title_h + 6;
+      int stat_w = mid_right_w - 24;
+      it.printf(stat_x, stat_y, id(font_large), "客厅 \U000F050F %s°C  \U000F058E %s%%",
+                fmt1(id(livingroom_temp).state).c_str(),
+                fmt0(id(livingroom_humidity).state).c_str());
+      draw_meter(stat_x, stat_y + 30, stat_w, "PM2.5", pct(id(livingroom_pm25).state), "");
+      draw_meter(stat_x, stat_y + 52, stat_w, "CO2", pct(id(livingroom_co2).state / 20.0f), "");
+      draw_meter(stat_x, stat_y + 74, stat_w, "PM10", pct(id(livingroom_pm10).state), "");
+
+      it.printf(stat_x, stat_y + 100, id(font_medium), "甲醛 %s", fmt2(id(livingroom_hcho).state).c_str());
+      it.printf(stat_x + 170, stat_y + 100, id(font_medium), "TVOC %s", fmt2(id(livingroom_tvoc).state).c_str());
+
+      // BOTTOM: pokemon style command menu (3x2 grid).
+      draw_panel(M, bot_y, W - (M * 2), bottom_h, "COMMAND MENU");
+      int menu_x = M + 12;
+      int menu_y = bot_y + title_h + 8;
+      int menu_w = W - (M * 2) - 24;
+      int menu_gap = 8;
+      int cell_w = (menu_w - (menu_gap * 2)) / 3;
+      int cell_h = 34;
+
+      bool cat_waste = id(cat_toilet_wastebin).state;
+      bool cat_sand = id(cat_toilet_sand_lack).state;
+      std::string cat_status = (cat_waste || cat_sand) ? (cat_waste ? "满" : "缺砂") : "正常";
+      std::string water_status = id(water_dispenser_lack).state ? "缺水" : "正常";
+
+      int row1_y = menu_y;
+      int row2_y = menu_y + cell_h + 6;
+      int col1_x = menu_x;
+      int col2_x = menu_x + cell_w + menu_gap;
+      int col3_x = menu_x + ((cell_w + menu_gap) * 2);
+      int icon_dx = 8;
+      int icon_dy = 6;
+      int text_dx = 34;
+      int text_dy = 10;
+
+      it.rectangle(col1_x, row1_y, cell_w, cell_h);
+      it.rectangle(col2_x, row1_y, cell_w, cell_h);
+      it.rectangle(col3_x, row1_y, cell_w, cell_h);
+      it.rectangle(col1_x, row2_y, cell_w, cell_h);
+      it.rectangle(col2_x, row2_y, cell_w, cell_h);
+      it.rectangle(col3_x, row2_y, cell_w, cell_h);
+
+      // Draw icon and text separately to avoid mixed-font baseline drift.
+      it.printf(col1_x + icon_dx, row1_y + icon_dy, id(font_icon), "\U000F0438");
+      it.printf(col1_x + text_dx, row1_y + text_dy, id(font_medium), "全效 %s%%", fmt0(id(filter_full_effect).state).c_str());
+      it.printf(col2_x + icon_dx, row1_y + icon_dy, id(font_icon), "\U000F0438");
+      it.printf(col2_x + text_dx, row1_y + text_dy, id(font_medium), "碳素 %s%%", fmt0(id(filter_carbon).state).c_str());
+      it.printf(col3_x + icon_dx, row1_y + icon_dy, id(font_icon), "\U000F0438");
+      it.printf(col3_x + text_dx, row1_y + text_dy, id(font_medium), "中效 %s%%", fmt0(id(filter_medium).state).c_str());
+
+      it.printf(col1_x + icon_dx, row2_y + icon_dy, id(font_icon), "\U000F081C");
+      it.printf(col1_x + text_dx, row2_y + text_dy, id(font_medium), "门锁 %s%%", fmt0(id(door_lock_battery).state).c_str());
+      it.printf(col2_x + icon_dx, row2_y + icon_dy, id(font_icon), "\U000F10CD");
+      it.printf(col2_x + text_dx, row2_y + text_dy, id(font_medium), "猫厕所 %s", cat_status.c_str());
+      it.printf(col3_x + icon_dx, row2_y + icon_dy, id(font_icon), "\U000F058C");
+      it.printf(col3_x + text_dx, row2_y + text_dy, id(font_medium), "饮水机 %s", water_status.c_str());
