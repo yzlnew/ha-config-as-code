@@ -79,12 +79,13 @@ font:
           - "\U000F10CD"  # mdi-cat
           - "\U000F058C"  # mdi-water
           - "\U000F12A1"  # mdi-battery-medium
+          - "\U000F06A9"  # mdi-robot
 
   # 16px - secondary text
   - file: "fonts/fusion-pixel-8px-proportional-zh_hans.ttf"
     id: font_medium
     size: 16
-    glyphs: "0123456789.:-°%/ ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz客厅温湿度体感甲醛今明后天一二三四五六周日中雾正常缺满砂水锁电量芯效碳素全门饮机猫厕所净化器"
+    glyphs: "0123456789.:-°%/$ ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz客厅温湿度体感甲醛今明后天一二三四五六周日中雾正常缺满砂水锁电量芯效碳素全门饮机猫厕所净化器"
     extras:
       - file: "fonts/materialdesignicons-webfont.ttf"
         glyphs:
@@ -105,6 +106,7 @@ font:
           - "\U000F10CD"  # mdi-cat
           - "\U000F058C"  # mdi-water
           - "\U000F12A1"  # mdi-battery-medium
+          - "\U000F06A9"  # mdi-robot
 
   # 24px - MDI icons only (for standalone icon rendering)
   - file: "fonts/materialdesignicons-webfont.ttf"
@@ -128,6 +130,7 @@ font:
       - "\U000F10CD"  # mdi-cat
       - "\U000F058C"  # mdi-water
       - "\U000F12A1"  # mdi-battery-medium
+      - "\U000F06A9"  # mdi-robot
 
 # ── Pokemon pixel art ──────────────────────────────────────
 image:
@@ -205,20 +208,20 @@ sensor:
     entity_id: sensor.xiaomi_cn_2008215373_ua3a_tvoc_density_p_3_9
     internal: true
 
-  # Filter life
+  # Claude Code usage
   - platform: homeassistant
-    id: filter_full_effect
-    entity_id: sensor.xiaomi_cn_2008215373_ua3a_filter_life_level_p_4_1
+    id: claude_5h_usage
+    entity_id: sensor.claude_code_5h_yong_liang
     internal: true
 
   - platform: homeassistant
-    id: filter_carbon
-    entity_id: sensor.xiaomi_cn_2008215373_ua3a_filter_life_level_p_4_4
+    id: claude_7d_usage
+    entity_id: sensor.claude_code_7d_yong_liang
     internal: true
 
   - platform: homeassistant
-    id: filter_medium
-    entity_id: sensor.xiaomi_cn_2008215373_ua3a_filter_life_level_p_4_7
+    id: claude_extra_usage
+    entity_id: sensor.claude_code_e_wai_yong_liang
     internal: true
 
   # Door lock battery
@@ -442,13 +445,19 @@ display:
           default: it.image(px, py, id(img_gengar)); break;
         }
 
-        const char *weekdays[] = {"", "日", "一", "二", "三", "四", "五", "六"};
+        const char *weekdays[] = {"日", "一", "二", "三", "四", "五", "六"};
+        char wbuf[4];
+        t.strftime(wbuf, sizeof(wbuf), "%w");  // 0=Sunday, 6=Saturday
+        int weekday_idx = wbuf[0] - '0';
+        if (weekday_idx < 0 || weekday_idx > 6) {
+          weekday_idx = 0;
+        }
         it.printf(left_x + left_w / 2, inner_y + 8, id(font_clock), TextAlign::TOP_CENTER,
                   "%02d:%02d", t.hour, t.minute);
         it.printf(right_x + right_w / 2, inner_y + 18, id(font_large), TextAlign::TOP_CENTER,
                   "%04d/%02d/%02d", t.year, t.month, t.day_of_month);
         it.printf(right_x + right_w / 2, inner_y + 50, id(font_large), TextAlign::TOP_CENTER,
-                  "周%s", weekdays[t.day_of_week]);
+                  "周%s", weekdays[weekday_idx]);
       } else {
         it.printf(left_x + 16, inner_y + 18, id(font_large), "--:--");
         it.printf(right_x + 16, inner_y + 18, id(font_large), "----/--/--");
@@ -516,7 +525,8 @@ display:
       int menu_w = W - (M * 2) - 24;
       int menu_gap = 8;
       int cell_w = (menu_w - (menu_gap * 2)) / 3;
-      int cell_h = 34;
+      int usage_h = 44;
+      int status_h = 34;
 
       bool cat_waste = id(cat_toilet_wastebin).state;
       bool cat_sand = id(cat_toilet_sand_lack).state;
@@ -524,29 +534,30 @@ display:
       std::string water_status = id(water_dispenser_lack).state ? "缺水" : "正常";
 
       int row1_y = menu_y;
-      int row2_y = menu_y + cell_h + 6;
+      int row2_y = menu_y + usage_h + 6;
       int col1_x = menu_x;
       int col2_x = menu_x + cell_w + menu_gap;
       int col3_x = menu_x + ((cell_w + menu_gap) * 2);
+      int usage_x = col1_x;
+      int usage_w = (cell_w * 2) + menu_gap;
       int icon_dx = 8;
       int icon_dy = 6;
       int text_dx = 34;
       int text_dy = 10;
 
-      it.rectangle(col1_x, row1_y, cell_w, cell_h);
-      it.rectangle(col2_x, row1_y, cell_w, cell_h);
-      it.rectangle(col3_x, row1_y, cell_w, cell_h);
-      it.rectangle(col1_x, row2_y, cell_w, cell_h);
-      it.rectangle(col2_x, row2_y, cell_w, cell_h);
-      it.rectangle(col3_x, row2_y, cell_w, cell_h);
+      it.rectangle(usage_x, row1_y, usage_w, usage_h);
+      it.rectangle(col3_x, row1_y, cell_w, usage_h);
+      it.rectangle(col1_x, row2_y, cell_w, status_h);
+      it.rectangle(col2_x, row2_y, cell_w, status_h);
+      it.rectangle(col3_x, row2_y, cell_w, status_h);
+
+      draw_meter(usage_x + 8, row1_y + 6, usage_w - 16, "CC 5h", pct(id(claude_5h_usage).state), "%");
+      draw_meter(usage_x + 8, row1_y + 24, usage_w - 16, "CC 7d", pct(id(claude_7d_usage).state), "%");
 
       // Draw icon and text separately to avoid mixed-font baseline drift.
-      it.printf(col1_x + icon_dx, row1_y + icon_dy, id(font_icon), "\U000F0438");
-      it.printf(col1_x + text_dx, row1_y + text_dy, id(font_medium), "全效 %s%%", fmt0(id(filter_full_effect).state).c_str());
-      it.printf(col2_x + icon_dx, row1_y + icon_dy, id(font_icon), "\U000F0438");
-      it.printf(col2_x + text_dx, row1_y + text_dy, id(font_medium), "碳素 %s%%", fmt0(id(filter_carbon).state).c_str());
-      it.printf(col3_x + icon_dx, row1_y + icon_dy, id(font_icon), "\U000F0438");
-      it.printf(col3_x + text_dx, row1_y + text_dy, id(font_medium), "中效 %s%%", fmt0(id(filter_medium).state).c_str());
+      it.printf(col3_x + icon_dx, row1_y + icon_dy, id(font_icon), "\U000F06A9");
+      it.printf(col3_x + text_dx, row1_y + 8, id(font_medium), "CC Extra");
+      it.printf(col3_x + text_dx, row1_y + 24, id(font_medium), "$%s", fmt1(id(claude_extra_usage).state).c_str());
 
       it.printf(col1_x + icon_dx, row2_y + icon_dy, id(font_icon), "\U000F081C");
       it.printf(col1_x + text_dx, row2_y + text_dy, id(font_medium), "门锁 %s%%", fmt0(id(door_lock_battery).state).c_str());

@@ -50,6 +50,12 @@ INCLUDE_ENTITIES = [
     "media_player.xi_chu",               # 西厨（Sonos）
     "media_player.xiaomi_cn_979970247_oh2",  # 智能音箱
     "media_player.zhu_wo",               # 主卧（Sonos）
+    # ── 猫砂盆按钮 ──
+    "button.zhi_neng_mao_ce_suo_max_scoop",              # 猫砂盆 清理
+    "button.zhi_neng_mao_ce_suo_max_dump_litter",        # 猫砂盆 倾空猫砂
+    "button.zhi_neng_mao_ce_suo_max_level_litter",        # 猫砂盆 抚平
+    "button.zhi_neng_mao_ce_suo_max_maintenance_start",   # 猫砂盆 维护模式：开始
+    "button.zhi_neng_mao_ce_suo_max_maintenance_exit",    # 猫砂盆 维护模式：退出
     # ── 虚拟开关 ──
     "input_boolean.zai_jia_que_ren",     # 在家确认（Apple Home 位置自动化）
     "input_boolean.fang_ke_mo_shi",      # 访客模式
@@ -82,7 +88,7 @@ def configure_homekit(entry_id):
                  {
                      "mode": "bridge",
                      "include_exclude_mode": "include",
-                     "domains": INCLUDE_DOMAINS + ["light", "media_player", "input_boolean"],
+                     "domains": INCLUDE_DOMAINS + ["light", "media_player", "input_boolean", "button"],
                  })
     print(f"  Domains set: {', '.join(INCLUDE_DOMAINS + ['light', 'media_player'])}")
 

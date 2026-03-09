@@ -16,7 +16,7 @@ except ImportError:
 # Suppress InsecureRequestWarning for verify=False
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-HA_URL = os.getenv("HA_EXTERNAL_URL") or os.getenv("HA_URL")
+HA_URL = os.getenv("HA_URL") or os.getenv("HA_EXTERNAL_URL")
 TOKEN = os.getenv("HA_TOKEN")
 
 if not HA_URL or not TOKEN:

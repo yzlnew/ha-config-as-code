@@ -586,13 +586,13 @@ def tile_toggle(entity, name=None, icon=None):
     return card
 
 
-def mushroom_media(entity, name=None):
+def mushroom_media(entity, name=None, media_controls=None):
     card = {
         "type": "custom:mushroom-media-player-card",
         "entity": entity,
         "use_media_info": True,
         "show_volume_level": True,
-        "media_controls": ["on_off", "play_pause_stop", "previous", "next"],
+        "media_controls": media_controls if media_controls is not None else ["on_off", "play_pause_stop", "previous", "next"],
         "volume_controls": ["volume_buttons", "volume_mute"],
         "collapsible_controls": True,
         "card_mod": {"style": MD3_STYLE}
@@ -686,6 +686,119 @@ def climate_popup_action(title, climate_cards):
     return browser_mod_popup(title, climate_cards)
 
 
+def claude_usage_card():
+    """Homepage card: Claude Code usage progress."""
+    entities = [_claude_5h_usage, _claude_7d_usage, _claude_extra_usage]
+
+    title_js = (
+        "[[["
+        " const changed = states['" + _claude_5h_usage + "']?.last_changed;"
+        " let syncText = '等待同步';"
+        " if (changed) {"
+        "   const d = new Date(changed);"
+        "   if (!Number.isNaN(d.getTime())) {"
+        "     syncText = `更新 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;"
+        "   }"
+        " }"
+        " return `<div><div style=\"font-size:16px;font-weight:700;color:var(--primary-text-color)\">Claude Code 配额</div><div style=\"margin-top:4px;font-size:12px;color:var(--secondary-text-color)\">${syncText}</div></div>`;"
+        " ]]]"
+    )
+
+    badge_js = (
+        "[[["
+        " const extra = states['" + _claude_extra_usage + "'];"
+        " const enabled = extra?.attributes?.enabled;"
+        " const used = Number(extra?.state);"
+        " const limit = Number(extra?.attributes?.monthly_limit);"
+        " const displayLimit = Number.isFinite(limit) ? limit / 100 : NaN;"
+        " if (enabled === false) {"
+        "   return `<div style=\"padding:6px 10px;border-radius:999px;background:var(--secondary-background-color);font-size:12px;font-weight:600;color:var(--secondary-text-color)\">额外未启用</div>`;"
+        " }"
+        " if (!Number.isFinite(used)) {"
+        "   return `<div style=\"padding:6px 10px;border-radius:999px;background:var(--secondary-background-color);font-size:12px;font-weight:600;color:var(--secondary-text-color)\">等待数据</div>`;"
+        " }"
+        " const usedText = `$${used.toFixed(2)}`;"
+        " const limitText = Number.isFinite(displayLimit) && displayLimit > 0 ? ` / $${displayLimit.toFixed(0)}` : '';"
+        " return `<div style=\"padding:6px 10px;border-radius:999px;background:var(--secondary-background-color);font-size:12px;font-weight:700;color:var(--primary-text-color)\">${usedText}${limitText}</div>`;"
+        " ]]]"
+    )
+
+    progress_js = (
+        "[[["
+        " const sensor = (entityId) => states[entityId] || null;"
+        " const clamp = (value) => Math.max(0, Math.min(100, value));"
+        " const getPct = (entityId) => {"
+        "   const raw = Number(sensor(entityId)?.state);"
+        "   return Number.isFinite(raw) ? clamp(raw) : null;"
+        " };"
+        " const formatReset = (entityId) => {"
+        "   const raw = sensor(entityId)?.attributes?.resets_at;"
+        "   if (!raw) return '重置时间待同步';"
+        "   const d = new Date(raw);"
+        "   if (Number.isNaN(d.getTime())) return '重置时间待同步';"
+        "   return `重置 ${String(d.getMonth() + 1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;"
+        " };"
+        " const renderRow = (label, entityId, fill) => {"
+        "   const value = getPct(entityId);"
+        "   const width = value === null ? 0 : value;"
+        "   const pctText = value === null ? '--%' : `${Math.round(value)}%`;"
+        "   return `<div style=\"display:grid;gap:6px\">"
+        "     <div style=\"display:flex;align-items:center;justify-content:space-between;gap:12px\">"
+        "       <span style=\"font-size:13px;color:var(--secondary-text-color)\">${label}</span>"
+        "       <span style=\"font-size:14px;font-weight:700;color:var(--primary-text-color)\">${pctText}</span>"
+        "     </div>"
+        "     <div style=\"height:10px;border-radius:999px;background:var(--secondary-background-color);overflow:hidden\">"
+        "       <div style=\"height:100%;width:${width}%;border-radius:999px;background:${fill}\"></div>"
+        "     </div>"
+        "     <div style=\"font-size:11px;color:var(--secondary-text-color)\">${formatReset(entityId)}</div>"
+        "   </div>`;"
+        " };"
+        " return `<div style=\"display:grid;gap:14px\">${renderRow('5 小时窗口', '" + _claude_5h_usage + "', 'var(--primary-color)')}${renderRow('7 天窗口', '" + _claude_7d_usage + "', 'var(--accent-color, var(--primary-color))')}</div>`;"
+        " ]]]"
+    )
+
+    return {
+        "type": "custom:button-card",
+        "entity": _claude_5h_usage,
+        "triggers_update": entities,
+        "show_icon": False,
+        "show_name": False,
+        "show_state": False,
+        "tap_action": {"action": "more-info"},
+        "custom_fields": {
+            "icon_area": (
+                "[[[ return `<div style=\"width:56px;height:56px;border-radius:18px;background:var(--secondary-background-color);display:flex;align-items:center;justify-content:center\"><ha-icon icon='si:claude' style='--mdc-icon-size:30px;color:var(--primary-color)'></ha-icon></div>`; ]]]"
+            ),
+            "title_area": title_js,
+            "extra_badge": badge_js,
+            "usage_area": progress_js,
+        },
+        "styles": {
+            "grid": [
+                {"grid-template-areas": "'icon_area title_area extra_badge' 'usage_area usage_area usage_area'"},
+                {"grid-template-columns": "56px minmax(0, 1fr) auto"},
+                {"gap": "14px"},
+                {"align-items": "start"},
+            ],
+            "card": [
+                {"padding": "18px"},
+                {"border-radius": "var(--ha-card-border-radius, 28px)"},
+                {"background": "var(--ha-card-background)"},
+                {"box-shadow": "none !important"},
+                {"border": "none !important"},
+            ],
+            "custom_fields": {
+                "icon_area": [{"grid-area": "icon_area"}],
+                "title_area": [{"grid-area": "title_area"}, {"align-self": "center"}],
+                "extra_badge": [{"grid-area": "extra_badge"}, {"justify-self": "end"}, {"align-self": "center"}],
+                "usage_area": [{"grid-area": "usage_area"}, {"width": "100%"}],
+            },
+        },
+        "layout_options": {"grid_columns": 4},
+        "card_mod": {"style": MD3_STYLE},
+    }
+
+
 # ============================================================
 # View 1: 首页 (Overview) — Redesigned
 # ============================================================
@@ -695,6 +808,9 @@ _temp = "sensor.xiaomi_cn_2008215373_ua3a_temperature_p_3_7"
 _humi = "sensor.xiaomi_cn_2008215373_ua3a_relative_humidity_p_3_1"
 _pm25 = "sensor.xiaomi_cn_2008215373_ua3a_pm2_5_density_p_3_4"
 _co2 = "sensor.xiaomi_cn_2008215373_ua3a_co2_density_p_3_8"
+_claude_5h_usage = "sensor.claude_code_5h_yong_liang"
+_claude_7d_usage = "sensor.claude_code_7d_yong_liang"
+_claude_extra_usage = "sensor.claude_code_e_wai_yong_liang"
 
 # Climate entities
 _living_ac = "climate.lemesh_cn_2000792394_air02"
@@ -801,6 +917,8 @@ home_view = {
                     "tap_action": env_popup_action(),
                 },
             ]),
+
+            claude_usage_card(),
 
             # Temperature & Humidity Graph
             mini_graph(
@@ -919,7 +1037,6 @@ home_view = {
             mushroom_cover("cover.bean_cn_1158901062_ct06_s_2_curtain", "次卧窗帘"),
             mushroom_cover("cover.xiaomi_cn_967167649_lyj3xs_s_2_airer", "晾衣架"),
             mushroom_media("media_player.tcl_85q10l_pro", "TCL 电视"),
-            mushroom_media("media_player.ke_ting", "客厅音箱"),
             mushroom_media("media_player.xi_chu", "西厨音箱"),
             mushroom_media("media_player.xiaomi_cn_979970247_oh2", "小爱音箱"),
             mushroom_media("media_player.zhu_wo", "主卧音箱"),
@@ -1703,7 +1820,14 @@ config = {
 
 import websocket
 
-ws_url = HA_URL.replace("https://", "wss://") + "/api/websocket"
+if HA_URL.startswith("https://"):
+    ws_base = "wss://" + HA_URL[len("https://"):]
+elif HA_URL.startswith("http://"):
+    ws_base = "ws://" + HA_URL[len("http://"):]
+else:
+    raise ValueError(f"Unsupported HA_URL scheme: {HA_URL}")
+
+ws_url = ws_base + "/api/websocket"
 ctx = ssl.create_default_context()
 ctx.check_hostname = False
 ctx.verify_mode = ssl.CERT_NONE

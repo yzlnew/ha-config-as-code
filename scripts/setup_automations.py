@@ -22,11 +22,11 @@ automations["bath_dehumidification_on"] = {
     "alias": "环境自动：主卫除湿开启",
 
     "trigger": [
-        {"platform": "numeric_state", "entity_id": "sensor.xiaomi_cn_921633051_na2_relative_humidity_p_11_9", "above": 80},
+        {"platform": "numeric_state", "entity_id": "sensor.xiaomi_cn_921633051_na2_relative_humidity_p_11_9", "above": 65},
         {"platform": "state", "entity_id": "binary_sensor.linp_cn_1139276665_hb01_occupancy_status_p_2_1", "from": "off", "to": "on"}
     ],
     "condition": [
-        {"condition": "numeric_state", "entity_id": "sensor.xiaomi_cn_921633051_na2_relative_humidity_p_11_9", "above": 80},
+        {"condition": "numeric_state", "entity_id": "sensor.xiaomi_cn_921633051_na2_relative_humidity_p_11_9", "above": 65},
         {"condition": "state", "entity_id": "binary_sensor.linp_cn_1139276665_hb01_occupancy_status_p_2_1", "state": "on"}
     ],
     "action": [{"service": "switch.turn_on", "target": {"entity_id": "switch.xiaomi_cn_921633051_na2_ventilation_p_4_8"}}],
@@ -36,7 +36,7 @@ automations["bath_dehumidification_on"] = {
 automations["bath_dehumidification_off"] = {
     "alias": "环境自动：主卫除湿关闭",
 
-    "trigger": [{"platform": "numeric_state", "entity_id": "sensor.xiaomi_cn_921633051_na2_relative_humidity_p_11_9", "below": 60}],
+    "trigger": [{"platform": "numeric_state", "entity_id": "sensor.xiaomi_cn_921633051_na2_relative_humidity_p_11_9", "below": 50}],
     "action": [{"service": "switch.turn_off", "target": {"entity_id": "switch.xiaomi_cn_921633051_na2_ventilation_p_4_8"}}],
     "mode": "single"
 }
@@ -237,6 +237,21 @@ automations["leave_home_guard"] = {
 # --- Group 7: Pet Feeder Daily Tracking ---
 _feeder_feed_success = "event.mmgg_cn_467135245_inland_feedsuccess_e_4_1"
 _feeder_daily_counter = "counter.pet_feeder_daily_portions"
+
+# --- Group 7b: Pokémon → Material You Theme ---
+_material_you_image_url = "input_text.material_you_image_url_2f34e1e49f2e405d974d3169792c64d0"
+
+automations["pokemon_material_you_theme"] = {
+    "alias": "主题联动：宝可梦图片同步 Material You",
+    "trigger": [{"platform": "state", "entity_id": "input_text.pokemon_sprite"}],
+    "condition": [
+        {"condition": "template", "value_template": "{{ trigger.to_state.state not in ['unknown', 'unavailable', ''] }}"},
+    ],
+    "action": [
+        {"service": "input_text.set_value", "target": {"entity_id": _material_you_image_url}, "data": {"value": "{{ trigger.to_state.state }}"}},
+    ],
+    "mode": "single",
+}
 
 automations["pet_feeder_daily_increment"] = {
     "alias": "宠物喂食：出粮计数累加",
