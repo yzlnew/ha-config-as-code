@@ -23,12 +23,8 @@ automations["bath_dehumidification_on"] = {
 
     "trigger": [
         {"platform": "numeric_state", "entity_id": "sensor.xiaomi_cn_921633051_na2_relative_humidity_p_11_9", "above": 65},
-        {"platform": "state", "entity_id": "binary_sensor.linp_cn_1139276665_hb01_occupancy_status_p_2_1", "from": "off", "to": "on"}
     ],
-    "condition": [
-        {"condition": "numeric_state", "entity_id": "sensor.xiaomi_cn_921633051_na2_relative_humidity_p_11_9", "above": 65},
-        {"condition": "state", "entity_id": "binary_sensor.linp_cn_1139276665_hb01_occupancy_status_p_2_1", "state": "on"}
-    ],
+    "condition": [],
     "action": [{"service": "switch.turn_on", "target": {"entity_id": "switch.xiaomi_cn_921633051_na2_ventilation_p_4_8"}}],
     "mode": "single"
 }
@@ -36,7 +32,7 @@ automations["bath_dehumidification_on"] = {
 automations["bath_dehumidification_off"] = {
     "alias": "环境自动：主卫除湿关闭",
 
-    "trigger": [{"platform": "numeric_state", "entity_id": "sensor.xiaomi_cn_921633051_na2_relative_humidity_p_11_9", "below": 50}],
+    "trigger": [{"platform": "numeric_state", "entity_id": "sensor.xiaomi_cn_921633051_na2_relative_humidity_p_11_9", "below": 50, "for": {"minutes": 2}}],
     "action": [{"service": "switch.turn_off", "target": {"entity_id": "switch.xiaomi_cn_921633051_na2_ventilation_p_4_8"}}],
     "mode": "single"
 }
@@ -74,7 +70,10 @@ automations["toilet_exhaust_off"] = {
     "alias": "环境自动：马桶离座延时关排风",
 
     "trigger": [{"platform": "state", "entity_id": "binary_sensor.zhimi_cn_873345887_pa6_seating_state_p_2_5", "from": "on", "to": "off", "for": {"minutes": 2}}],
-    "condition": [{"condition": "state", "entity_id": "binary_sensor.zhimi_cn_873345887_pa6_seating_state_p_2_5", "state": "off"}],
+    "condition": [
+        {"condition": "state", "entity_id": "binary_sensor.zhimi_cn_873345887_pa6_seating_state_p_2_5", "state": "off"},
+        {"condition": "numeric_state", "entity_id": "sensor.xiaomi_cn_921633051_na2_relative_humidity_p_11_9", "below": 55},
+    ],
     "action": [{"service": "switch.turn_off", "target": {"entity_id": "switch.xiaomi_cn_921633051_na2_ventilation_p_4_8"}}],
     "mode": "restart"
 }
