@@ -86,6 +86,25 @@ pip install requests websocket-client urllib3 python-dotenv
 - 本机需要 `sshpass`
 - HA 侧可通过 SSH + sudo 写入 `/homeassistant`
 
+## 依赖的集成与插件
+
+### HACS 集成
+
+- [Adaptive Lighting](https://github.com/basnijholt/adaptive-lighting)：按区域配置自适应色温/亮度曲线，替代各平台自带的节律照明
+
+### HACS 前端卡片
+
+- [Mushroom](https://github.com/piitaya/lovelace-mushroom)：Dashboard 主要卡片组件
+- [button-card](https://github.com/custom-cards/button-card)：自定义按钮样式
+- [card-mod](https://github.com/thomasloven/lovelace-card-mod)：Shadow DOM CSS 注入，用于 Mushroom 等卡片的深度样式定制
+
+### 官方 / 核心集成
+
+- [Matter](https://www.home-assistant.io/integrations/matter/)：Matter 灯具接入
+- [HomeKit Bridge](https://www.home-assistant.io/integrations/homekit/)：将非 Matter 设备暴露给 Apple Home
+- [Xiaomi Miot Auto](https://github.com/al-one/hass-xiaomi-miot)：小米/米家设备接入（灯具、开关、传感器、浴霸等）
+- [ESPHome](https://www.home-assistant.io/integrations/esphome/)：电子墨水屏等 ESP 设备接入
+
 ## 推荐执行顺序
 
 ```bash

@@ -86,6 +86,25 @@ Extra requirement (only for `setup_weather_forecast.py`):
 - `sshpass` installed on the machine running scripts
 - SSH + sudo access to `/homeassistant` on HA host
 
+## Required Integrations & Plugins
+
+### HACS Integrations
+
+- [Adaptive Lighting](https://github.com/basnijholt/adaptive-lighting): per-area adaptive color temperature and brightness curves, replacing vendor-native circadian lighting
+
+### HACS Frontend Cards
+
+- [Mushroom](https://github.com/piitaya/lovelace-mushroom): primary card components for the dashboard
+- [button-card](https://github.com/custom-cards/button-card): custom button styling
+- [card-mod](https://github.com/thomasloven/lovelace-card-mod): shadow DOM CSS injection for deep styling of Mushroom and other cards
+
+### Official / Core Integrations
+
+- [Matter](https://www.home-assistant.io/integrations/matter/): Matter light device support
+- [HomeKit Bridge](https://www.home-assistant.io/integrations/homekit/): expose non-Matter devices to Apple Home
+- [Xiaomi Miot Auto](https://github.com/al-one/hass-xiaomi-miot): Xiaomi/Mi Home device support (lights, switches, sensors, bathroom heaters, etc.)
+- [ESPHome](https://www.home-assistant.io/integrations/esphome/): ESP-based devices such as the e-ink display
+
 ## Recommended Execution Order
 
 ```bash
