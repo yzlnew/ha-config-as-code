@@ -512,8 +512,20 @@ DISPLAY_BY_UNIQUE_ID = {
         "desired_entity_id": "automation.btn_master_bedroom_middle_click",
     },
     "btn_master_bedroom_right_click": {
-        "name": "开关绑定：主卧窗帘切换", "icon": "mdi:curtains",
+        "name": "开关绑定：主卧窗帘开", "icon": "mdi:curtains",
         "desired_entity_id": "automation.btn_master_bedroom_right_click",
+    },
+    "btn_master_bedroom_right_dblclick": {
+        "name": "开关绑定：主卧窗帘关", "icon": "mdi:curtains",
+        "desired_entity_id": "automation.btn_master_bedroom_right_dblclick",
+    },
+    "btn_master_bedroom_right_longpress": {
+        "name": "开关绑定：主卧窗帘暂停", "icon": "mdi:curtains",
+        "desired_entity_id": "automation.btn_master_bedroom_right_longpress",
+    },
+    "btn_master_bedroom_entrance_right_all_off": {
+        "name": "开关绑定：主卧入口右键关闭全屋灯光(除主卧)", "icon": "mdi:lightbulb-group-off",
+        "desired_entity_id": "automation.btn_master_bedroom_entrance_right_all_off",
     },
     "btn_guest_bedroom_left_click": {
         "name": "开关绑定：次卧灯光切换", "icon": "mdi:light-switch",
@@ -524,8 +536,16 @@ DISPLAY_BY_UNIQUE_ID = {
         "desired_entity_id": "automation.btn_guest_bedroom_left_dblclick",
     },
     "btn_guest_bedroom_right_click": {
-        "name": "开关绑定：次卧窗帘切换", "icon": "mdi:curtains",
+        "name": "开关绑定：次卧窗帘开", "icon": "mdi:curtains",
         "desired_entity_id": "automation.btn_guest_bedroom_right_click",
+    },
+    "btn_guest_bedroom_right_dblclick": {
+        "name": "开关绑定：次卧窗帘关", "icon": "mdi:curtains",
+        "desired_entity_id": "automation.btn_guest_bedroom_right_dblclick",
+    },
+    "btn_guest_bedroom_right_longpress": {
+        "name": "开关绑定：次卧窗帘暂停", "icon": "mdi:curtains",
+        "desired_entity_id": "automation.btn_guest_bedroom_right_longpress",
     },
     "btn_guest_bedroom_left_longpress": {
         "name": "开关绑定：次卧全关", "icon": "mdi:light-switch-off",
@@ -773,6 +793,9 @@ mb_switches = area_switches["主卧"]
 mb_w3 = [sw for sw in mb_switches if sw["type"] == "w3"]
 # Right button: w3 + w2 (all except w1)
 mb_right_switches = [sw for sw in mb_switches if sw["type"] != "w1"]
+# Entrance switch (双开3) gets a different right-click action
+mb_entrance = [sw for sw in mb_switches if sw["id"] == "2042152203"]
+mb_right_no_entrance = [sw for sw in mb_right_switches if sw["id"] != "2042152203"]
 
 add_auto("btn_master_bedroom_left_click",
          "Btn: Master Bedroom Light Toggle",
@@ -799,10 +822,35 @@ add_auto("btn_master_bedroom_middle_click",
          [{"service": "scene.turn_on", "target": {"entity_id": "scene.shui_mian_mo_shi"}}])
 
 add_auto("btn_master_bedroom_right_click",
-         "Btn: Master Bedroom Curtain Toggle",
-         "Master bedroom right click -> toggle curtains",
-         triggers_for(mb_right_switches, "right", "click"),
-         make_curtain_toggle_action(AREA_CURTAINS["主卧"]))
+         "Btn: Master Bedroom Curtain Open",
+         "Master bedroom right click -> open curtains (excluding entrance switch)",
+         triggers_for(mb_right_no_entrance, "right", "click"),
+         [{"service": "cover.open_cover", "target": {"entity_id": AREA_CURTAINS["主卧"]}}])
+
+add_auto("btn_master_bedroom_right_dblclick",
+         "Btn: Master Bedroom Curtain Close",
+         "Master bedroom right double-click -> close curtains",
+         triggers_for(mb_right_no_entrance, "right", "double_click"),
+         [{"service": "cover.close_cover", "target": {"entity_id": AREA_CURTAINS["主卧"]}}])
+
+add_auto("btn_master_bedroom_right_longpress",
+         "Btn: Master Bedroom Curtain Stop",
+         "Master bedroom right long-press -> stop curtains",
+         triggers_for(mb_right_no_entrance, "right", "long_press"),
+         [{"service": "cover.stop_cover", "target": {"entity_id": AREA_CURTAINS["主卧"]}}])
+
+# Entrance switch right click -> turn off all lights except master bedroom
+non_master_lights = []
+for _area, _lights in AREA_ALL_LIGHTS.items():
+    if _area != "主卧":
+        non_master_lights.extend(_lights)
+non_master_lights = list(dict.fromkeys(non_master_lights))  # dedupe
+
+add_auto("btn_master_bedroom_entrance_right_all_off",
+         "Btn: Master Bedroom Entrance Right All Off (Except Master)",
+         "Master bedroom entrance switch right click -> turn off all lights except master bedroom",
+         triggers_for(mb_entrance, "right", "click"),
+         [{"service": "light.turn_off", "target": {"entity_id": non_master_lights}}])
 
 # --- 次卧 ---
 gb_switches = area_switches["次卧"]
@@ -820,10 +868,22 @@ add_auto("btn_guest_bedroom_left_dblclick",
          make_toggle_action(AREA_STRIPS["次卧"]))
 
 add_auto("btn_guest_bedroom_right_click",
-         "Btn: Guest Bedroom Curtain Toggle",
-         "Guest bedroom right click -> toggle curtains",
+         "Btn: Guest Bedroom Curtain Open",
+         "Guest bedroom right click -> open curtains",
          triggers_for(gb_switches, "right", "click"),
-         make_curtain_toggle_action(AREA_CURTAINS["次卧"]))
+         [{"service": "cover.open_cover", "target": {"entity_id": AREA_CURTAINS["次卧"]}}])
+
+add_auto("btn_guest_bedroom_right_dblclick",
+         "Btn: Guest Bedroom Curtain Close",
+         "Guest bedroom right double-click -> close curtains",
+         triggers_for(gb_switches, "right", "double_click"),
+         [{"service": "cover.close_cover", "target": {"entity_id": AREA_CURTAINS["次卧"]}}])
+
+add_auto("btn_guest_bedroom_right_longpress",
+         "Btn: Guest Bedroom Curtain Stop",
+         "Guest bedroom right long-press -> stop curtains",
+         triggers_for(gb_switches, "right", "long_press"),
+         [{"service": "cover.stop_cover", "target": {"entity_id": AREA_CURTAINS["次卧"]}}])
 
 add_auto("btn_guest_bedroom_left_longpress",
          "Btn: Guest Bedroom All Off",
@@ -969,8 +1029,9 @@ if "--bind" in sys.argv:
 
     time.sleep(2)
 
-    ws_url = HA_URL.replace("https://", "wss://") + "/api/websocket"
-    ws = websocket.create_connection(ws_url, sslopt={"cert_reqs": ssl.CERT_NONE})
+    ws_url = HA_URL.replace("https://", "wss://").replace("http://", "ws://") + "/api/websocket"
+    ws_opts = {"sslopt": {"cert_reqs": ssl.CERT_NONE}} if ws_url.startswith("wss://") else {}
+    ws = websocket.create_connection(ws_url, **ws_opts)
 
     msg = json.loads(ws.recv())
     ws.send(json.dumps({"type": "auth", "access_token": TOKEN}))
