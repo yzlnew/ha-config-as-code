@@ -37,7 +37,7 @@ def create_instance(name, lights, options_override=None):
         "interval": 90,
         "transition": 45,
         "initial_transition": 1,
-        "min_brightness": 1,
+        "min_brightness": 20,
         "max_brightness": 100,
         "min_color_temp": 2000,
         "max_color_temp": 5500,
