@@ -13,6 +13,8 @@
 
 ## 根因 1：`accept_ra=0` 导致 HA 无法路由到 Thread 网格
 
+> **已修复**: 此问题已被上游 [home-assistant/operating-system#4589](https://github.com/home-assistant/operating-system/issues/4589) 修复。升级 HAOS 到包含此修复的版本后，无需手动设置 `accept_ra=2`，可移除 `scripts/fix-thread-accept-ra.sh` 及相关 udev 规则/systemd service。
+
 ### 原理
 
 Thread 灯不在 WiFi 网络中，它们有独立的 IPv6 子网（Mesh-Local prefix）：

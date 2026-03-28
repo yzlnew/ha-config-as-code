@@ -5,6 +5,10 @@
 # Problem: HAOS sets ipv6 forwarding=1, which resets accept_ra to 0,
 #          preventing HA from receiving Thread route advertisements.
 # Solution: Set accept_ra=2 and persist via udev rule (survives HAOS updates).
+#
+# NOTE: This issue has been fixed upstream in home-assistant/operating-system#4589.
+#       After upgrading HAOS to a version that includes this fix, this script is
+#       no longer needed and can be removed.
 
 set -e
 
