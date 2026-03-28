@@ -22,7 +22,7 @@ automations["bath_dehumidification_on"] = {
     "alias": "环境自动：主卫除湿开启",
 
     "trigger": [
-        {"platform": "numeric_state", "entity_id": "sensor.xiaomi_cn_921633051_na2_relative_humidity_p_11_9", "above": 65},
+        {"platform": "numeric_state", "entity_id": "sensor.xiaomi_cn_921633051_na2_relative_humidity_p_11_9", "above": 80},
     ],
     "condition": [],
     "action": [{"service": "switch.turn_on", "target": {"entity_id": "switch.xiaomi_cn_921633051_na2_ventilation_p_4_8"}}],
@@ -32,7 +32,7 @@ automations["bath_dehumidification_on"] = {
 automations["bath_dehumidification_off"] = {
     "alias": "环境自动：主卫除湿关闭",
 
-    "trigger": [{"platform": "numeric_state", "entity_id": "sensor.xiaomi_cn_921633051_na2_relative_humidity_p_11_9", "below": 50, "for": {"minutes": 2}}],
+    "trigger": [{"platform": "numeric_state", "entity_id": "sensor.xiaomi_cn_921633051_na2_relative_humidity_p_11_9", "below": 65, "for": {"minutes": 2}}],
     "action": [{"service": "switch.turn_off", "target": {"entity_id": "switch.xiaomi_cn_921633051_na2_ventilation_p_4_8"}}],
     "mode": "single"
 }
@@ -48,12 +48,15 @@ automations["welcome_home_mode"] = {
         {"platform": "state", "entity_id": "event.lumi_cn_1011935590_bzacn1_lock_opened_e_2_1"},
     ],
     "condition": [{"condition": "numeric_state", "entity_id": "sensor.linp_cn_949882702_ld6bcw_illumination_p_5_5", "below": 10}],
-    "action": [{"service": "light.turn_on", "target": {"entity_id": [
-        "light.xi_chu_deng_guang",
-        "light.ke_ting_dian_shi_gui_dao",
-        "light.ke_ting_sha_fa_gui_dao",
-        "light.ke_ting_zhuo_zi_gui_dao",
-    ]}}],
+    "action": [
+        {"service": "input_boolean.turn_on", "target": {"entity_id": "input_boolean.ren_lai_ren_zou_zi_dong_deng"}},
+        {"service": "light.turn_on", "target": {"entity_id": [
+            "light.xi_chu_deng_guang",
+            "light.ke_ting_dian_shi_gui_dao",
+            "light.ke_ting_sha_fa_gui_dao",
+            "light.ke_ting_zhuo_zi_gui_dao",
+        ]}},
+    ],
     "mode": "single"
 }
 
@@ -72,7 +75,7 @@ automations["toilet_exhaust_off"] = {
     "trigger": [{"platform": "state", "entity_id": "binary_sensor.zhimi_cn_873345887_pa6_seating_state_p_2_5", "from": "on", "to": "off", "for": {"minutes": 2}}],
     "condition": [
         {"condition": "state", "entity_id": "binary_sensor.zhimi_cn_873345887_pa6_seating_state_p_2_5", "state": "off"},
-        {"condition": "numeric_state", "entity_id": "sensor.xiaomi_cn_921633051_na2_relative_humidity_p_11_9", "below": 55},
+        {"condition": "numeric_state", "entity_id": "sensor.xiaomi_cn_921633051_na2_relative_humidity_p_11_9", "below": 75},
     ],
     "action": [{"service": "switch.turn_off", "target": {"entity_id": "switch.xiaomi_cn_921633051_na2_ventilation_p_4_8"}}],
     "mode": "restart"
@@ -96,7 +99,7 @@ automations["water_leak_alert"] = {
 # --- Group 4b: Apple TV + Trytogo Light ---
 automations["appletv_trytogo_on"] = {
     "alias": "影音联动：Apple TV 开启时打开 Trytogo 灯",
-    "trigger": [{"platform": "state", "entity_id": "media_player.dian_shi_ji", "from": "off", "to": ["idle", "playing", "paused"]}],
+    "trigger": [{"platform": "state", "entity_id": "media_player.dian_shi_ji", "from": ["off", "idle", "standby"], "to": ["idle", "playing", "paused"]}],
     "action": [{"service": "light.turn_on", "target": {"entity_id": "light.trytogo"}}],
     "mode": "single",
 }
@@ -177,6 +180,7 @@ for room in PRESENCE_ROOMS:
     # --- 人来灯开 ---
     on_conditions = [
         {"condition": "state", "entity_id": PRESENCE_TOGGLE, "state": "on"},
+        {"condition": "state", "entity_id": "input_boolean.zai_jia_que_ren", "state": "on"},
     ]
     if "lux" in room:
         on_conditions.append({"condition": "numeric_state", "entity_id": room["lux"], "below": 30})
@@ -225,6 +229,7 @@ automations["leave_home_guard"] = {
         {"service": "media_player.turn_off", "target": {"entity_id": [
             "media_player.tcl_85q10l_pro", "media_player.ke_ting", "media_player.xi_chu",
         ]}},
+        {"service": "input_boolean.turn_off", "target": {"entity_id": PRESENCE_TOGGLE}},
         {"service": "notify.mobile_app_iphone18_2", "data": {
             "title": "离家守护已激活",
             "message": "在家确认已关闭，灯光、空调、影音设备已自动关闭。",
@@ -328,7 +333,7 @@ if __name__ == "__main__":
 
     # Ensure input_boolean helpers exist
     print("\nEnsuring helpers...")
-    ws_url = HA_URL.replace("https://", "wss://") + "/api/websocket"
+    ws_url = HA_URL.replace("https://", "wss://").replace("http://", "ws://") + "/api/websocket"
     ws = websocket.create_connection(ws_url, sslopt={"cert_reqs": ssl.CERT_NONE})
     msg = json.loads(ws.recv())
     ws.send(json.dumps({"type": "auth", "access_token": TOKEN}))

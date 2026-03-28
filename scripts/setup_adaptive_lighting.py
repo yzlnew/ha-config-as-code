@@ -34,7 +34,7 @@ def create_instance(name, lights, options_override=None):
     # Step 5: Submit options with lights
     options = {
         "lights": lights,
-        "interval": 90,
+        "interval": 120,
         "transition": 45,
         "initial_transition": 1,
         "min_brightness": 20,
@@ -48,6 +48,7 @@ def create_instance(name, lights, options_override=None):
         "detect_non_ha_changes": False,
         "intercept": True,
         "multi_light_intercept": True,
+        "skip_redundant_commands": False,
     }
     if options_override:
         options.update(options_override)

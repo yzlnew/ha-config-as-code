@@ -36,3 +36,11 @@ echo "Next steps:"
 echo "  1. Power-cycle Border Routers (Apple TV + HomePods) for 30 seconds"
 echo "  2. Restart Matter Server addon in HA"
 echo "  3. Wait 2-3 minutes for devices to reconnect"
+
+
+# # 1. 删除持久化 udev 规则                                                                                                      
+# rm /etc/udev/rules.d/90-thread-accept-ra.rules                                                                                 
+# udevadm control --reload-rules                                                                                                 
+                                                                                                                                
+# # 2. 恢复 accept_ra 为默认值 1         
+# sysctl -w net.ipv6.conf.enp6s18.accept_ra=1

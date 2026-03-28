@@ -226,7 +226,7 @@ AREA_CURTAINS = {
         "cover.linp_cn_2079495198_ec1db_s_2_curtain",   # 纱帘
     ],
     "主卧": [
-        "cover.bean_cn_1158897956_ct06_s_2_curtain",
+        "cover.bean_cn_1158897918_ct06_s_2_curtain",
     ],
     "次卧": [
         "cover.bean_cn_1158901062_ct06_s_2_curtain",
