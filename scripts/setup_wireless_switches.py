@@ -176,6 +176,7 @@ AREA_LIGHTS = {
         "light.intelligent_drive_power_supply_18",           # 床头左射灯
         "light.intelligent_drive_power_supply_19",           # 床头右射灯
         "light.linp_cn_949882702_ld6bcw_s_2_light",         # 存在筒射灯
+        "light.yeelink_cn_125156913_lamp4_s_2_light",       # 台灯
     ],
     "主卫": [
         "light.linp_cn_950194815_ld6bcw_s_2_light",         # 存在筒射灯
@@ -200,7 +201,6 @@ AREA_LIGHTS = {
         "light.intelligent_drive_power_supply_7",            # 射灯 2
         "light.intelligent_drive_power_supply_9",            # 射灯 3
         "light.intelligent_drive_power_supply_10",           # 射灯 4
-        "light.lemesh_cn_2000705436_wy0d02_s_2_light",      # 色温灯
     ],
 }
 
@@ -216,7 +216,7 @@ AREA_STRIPS = {
         "light.lemesh_cn_2020803689_wy0d02_s_2_light",            # 入口灯带
     ],
     "次卧": ["light.lemesh_cn_2001035175_wy0d02_s_2_light"],      # 入口灯带
-    "书房": ["light.lemesh_cn_2000705436_wy0d02_s_2_light"],      # 色温灯（兼灯带）
+    "书房": ["light.lemesh_cn_2000705436_wy0d02_s_2_light"],      # 书房氛围灯带
 }
 
 # Area → curtain entities
@@ -244,7 +244,7 @@ AREA_ALL_LIGHTS = {}
 for area in AREA_LIGHTS:
     AREA_ALL_LIGHTS[area] = list(AREA_LIGHTS[area])
     if area in AREA_STRIPS:
-        # Avoid duplicates (书房 色温灯 is in both)
+        # Avoid duplicates
         for s in AREA_STRIPS[area]:
             if s not in AREA_ALL_LIGHTS[area]:
                 AREA_ALL_LIGHTS[area].append(s)

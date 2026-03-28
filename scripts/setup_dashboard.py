@@ -1016,7 +1016,7 @@ home_view = {
             mushroom_light("light.shu_fang_deng_guang", "书房灯光组", "mdi:bookshelf", is_group=True),
             mushroom_light("light.yang_tai_deng_guang", "阳台灯光组", "mdi:balcony", is_group=True),
             mushroom_light("light.quan_wu_zhu_deng_dai", "全屋主灯带 (Matter)", "mdi:led-strip-variant", is_group=True),
-            mushroom_light("light.quan_wu_fen_wei_deng_dai", "全屋氛围灯带", "mdi:led-strip-variant-off", is_group=True),
+            mushroom_light("light.quan_wu_fen_wei_deng_dai", "全屋氛围灯带", "mdi:led-strip-variant", is_group=True),
         ]),
 
         # --- Section 3: 设备与影音 ---
@@ -1069,7 +1069,7 @@ lighting_view = {
             },
             mushroom_light("light.suo_you_deng_guang", "所有灯光", "mdi:home-lightbulb", is_group=True),
             mushroom_light("light.quan_wu_zhu_deng_dai", "全屋主灯带 (Matter)", "mdi:led-strip-variant", is_group=True),
-            mushroom_light("light.quan_wu_fen_wei_deng_dai", "全屋氛围灯带", "mdi:led-strip-variant-off", is_group=True),
+            mushroom_light("light.quan_wu_fen_wei_deng_dai", "全屋氛围灯带", "mdi:led-strip-variant", is_group=True),
             mushroom_entity("input_boolean.ren_lai_ren_zou_zi_dong_deng", "人来人走自动灯", "mdi:motion-sensor"),
         ]),
         # --- 客厅 ---
@@ -1163,7 +1163,7 @@ lighting_view = {
             mushroom_light("light.intelligent_drive_power_supply_9", "射灯 3", "mdi:spotlight-beam"),
             mushroom_light("light.intelligent_drive_power_supply_10", "射灯 4", "mdi:spotlight-beam"),
             mushroom_light("light.magical_homes_color_light_2", "书房灯带", "mdi:led-strip-variant"),
-            mushroom_light("light.lemesh_cn_2000705436_wy0d02_s_2_light", "色温灯", "mdi:desk-lamp"),
+            mushroom_light("light.lemesh_cn_2000705436_wy0d02_s_2_light", "书房氛围灯带", "mdi:led-strip"),
         ]),
         # --- 阳台 ---
         section("🌿 阳台", [

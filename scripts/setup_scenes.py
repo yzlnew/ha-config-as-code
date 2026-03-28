@@ -71,6 +71,7 @@ MASTER_BEDROOM_ALL = [
     "light.lemesh_cn_2020771536_wy0d02_s_2_light",  # 床头灯带
     "light.lemesh_cn_2020803689_wy0d02_s_2_light",  # 入口灯带
     "light.linp_cn_949882702_ld6bcw_s_2_light",     # 存在筒射灯
+    "light.yeelink_cn_125156913_lamp4_s_2_light",   # 台灯
 ]
 
 # 主卫

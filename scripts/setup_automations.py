@@ -278,6 +278,35 @@ automations["pet_feeder_daily_reset"] = {
     "mode": "single",
 }
 
+# --- Group 8: Aqara Cube (魔方控制器) ---
+_cube_topic = "zigbee2mqtt/0x00158d00070822d2"
+
+automations["cube_shake_toggle_apple_tv"] = {
+    "alias": "魔方：摇晃开关 Apple TV",
+    "description": "摇晃魔方切换 Apple TV 开关状态",
+    "trigger": [{"platform": "mqtt", "topic": _cube_topic, "value_template": "{{ value_json.action }}", "payload": "shake"}],
+    "condition": [],
+    "action": [{
+        "if": [{"condition": "state", "entity_id": "media_player.dian_shi_ji", "state": "standby"}],
+        "then": [{"service": "remote.turn_on", "target": {"entity_id": "remote.dian_shi_ji"}}],
+        "else": [{"service": "remote.turn_off", "target": {"entity_id": "remote.dian_shi_ji"}}],
+    }],
+    "mode": "single",
+}
+
+automations["cube_tap_toggle_litter_maintenance"] = {
+    "alias": "魔方：敲击切换猫砂盆维护模式",
+    "description": "双击魔方进入或退出猫砂盆维护模式",
+    "trigger": [{"platform": "mqtt", "topic": _cube_topic, "value_template": "{{ value_json.action }}", "payload": "tap"}],
+    "condition": [],
+    "action": [{
+        "if": [{"condition": "state", "entity_id": "button.zhi_neng_mao_ce_suo_max_maintenance_exit", "state": "unavailable"}],
+        "then": [{"service": "button.press", "target": {"entity_id": "button.zhi_neng_mao_ce_suo_max_maintenance_start"}}],
+        "else": [{"service": "button.press", "target": {"entity_id": "button.zhi_neng_mao_ce_suo_max_maintenance_exit"}}],
+    }],
+    "mode": "single",
+}
+
 
 def ensure_counter(ws, msg_id, name, icon, initial=0, step=1, minimum=0, maximum=9999):
     """Create counter helper (idempotent — ignores 'already exists')."""

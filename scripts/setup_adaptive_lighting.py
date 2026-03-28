@@ -96,6 +96,7 @@ AREAS = {
         "light.intelligent_drive_power_supply_18",           # 床头左射灯
         "light.intelligent_drive_power_supply_19",           # 床头右射灯
         "light.linp_cn_949882702_ld6bcw_s_2_light",         # 存在筒射灯
+        "light.yeelink_cn_125156913_lamp4_s_2_light",       # 台灯
     ],
     "主卫": [
         "light.linp_cn_950194815_ld6bcw_s_2_light",         # 存在筒射灯
@@ -119,7 +120,7 @@ AREAS = {
         "light.intelligent_drive_power_supply_7",            # 射灯 2
         "light.intelligent_drive_power_supply_9",            # 射灯 3
         "light.intelligent_drive_power_supply_10",           # 射灯 4
-        "light.lemesh_cn_2000705436_wy0d02_s_2_light",      # 色温灯
+        "light.lemesh_cn_2000705436_wy0d02_s_2_light",      # 书房氛围灯带
     ],
     "阳台": [
         "light.wlg_cn_949198312_wy0a06_s_2_light",          # 筒射灯 1

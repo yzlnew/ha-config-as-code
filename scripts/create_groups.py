@@ -92,6 +92,7 @@ groups = {
         "light.lemesh_cn_2020771536_wy0d02_s_2_light",  # 床头灯带
         "light.lemesh_cn_2020803689_wy0d02_s_2_light",  # 入口灯带
         "light.linp_cn_949882702_ld6bcw_s_2_light",     # 存在筒射灯
+        "light.yeelink_cn_125156913_lamp4_s_2_light",   # 台灯
     ],
     "主卫灯光": [
         "light.xiaomi_cn_921633051_na2_s_2_light",       # 浴霸灯
@@ -120,7 +121,7 @@ groups = {
         "light.intelligent_drive_power_supply_9",        # 射灯3
         "light.intelligent_drive_power_supply_10",       # 射灯4
         "light.magical_homes_color_light_2",             # 书房灯带
-        "light.lemesh_cn_2000705436_wy0d02_s_2_light",  # 色温灯
+        "light.lemesh_cn_2000705436_wy0d02_s_2_light",  # 书房氛围灯带
     ],
     "阳台灯光": [
         "light.magical_homes_color_light",               # 灯带
@@ -143,7 +144,7 @@ groups = {
         "light.lemesh_cn_2001035175_wy0d02_s_2_light",  # 次卧-入口氛围灯
         "light.lemesh_cn_2020771536_wy0d02_s_2_light",  # 主卧-床头氛围灯
         "light.lemesh_cn_2020803689_wy0d02_s_2_light",  # 主卧-入口氛围灯
-        "light.lemesh_cn_2000705436_wy0d02_s_2_light",  # 书房-氛围色温灯
+        "light.lemesh_cn_2000705436_wy0d02_s_2_light",  # 书房-氛围灯带
         "light.moes_matter_light",                        # 红色装饰灯 (虽然带 matter 但属于氛围)
     ],
     "所有灯光": [
