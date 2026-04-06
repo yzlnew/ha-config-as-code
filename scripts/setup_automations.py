@@ -239,11 +239,92 @@ automations["leave_home_guard"] = {
 }
 
 # --- Group 7: Pet Feeder Daily Tracking ---
+_pet_notify_service = "notify.mobile_app_xie_zhi_ling_de_iphone"
+_pet_todo_list = "todo.shopping_list"
+_pet_drink_times = "sensor.yin_shui_ji_max_zhen_wu_xian_drink_times"
+_pet_litter_occupied = "binary_sensor.zhi_neng_mao_ce_suo_max_toilet_occupied"
+_pet_sand_lack = "binary_sensor.zhi_neng_mao_ce_suo_max_sand_lack"
+_pet_wastebin_full = "binary_sensor.zhi_neng_mao_ce_suo_max_wastebin_filled"
 _feeder_feed_success = "event.mmgg_cn_467135245_inland_feedsuccess_e_4_1"
 _feeder_daily_counter = "counter.pet_feeder_daily_portions"
 
+automations["petkit_cat_toilet_notify"] = {
+    "alias": "PetKit：Nova 如厕通知",
+    "trigger": [{"platform": "state", "entity_id": _pet_litter_occupied, "from": "off", "to": "on"}],
+    "action": [{
+        "service": _pet_notify_service,
+        "data": {
+            "title": "🐱 Nova 上厕所了",
+            "message": "{{ now().strftime(\"%H:%M\") }} Nova 进入了猫厕所 🚽",
+        },
+    }],
+    "mode": "single",
+}
+
+automations["petkit_cat_drink_notify"] = {
+    "alias": "PetKit：Nova 喝水通知",
+    "trigger": [{"platform": "state", "entity_id": _pet_drink_times}],
+    "condition": [{
+        "condition": "template",
+        "value_template": (
+            "{{ trigger.from_state is not none and trigger.to_state is not none "
+            "and trigger.from_state.state not in ['unknown', 'unavailable'] "
+            "and trigger.to_state.state not in ['unknown', 'unavailable'] "
+            "and (trigger.to_state.state | int(0)) > (trigger.from_state.state | int(0)) }}"
+        ),
+    }],
+    "action": [{
+        "service": _pet_notify_service,
+        "data": {
+            "title": "🐱 Nova 喝水了",
+            "message": "💧 {{ now().strftime(\"%H:%M\") }} Nova 喝了水，今日第 {{ states(\"sensor.yin_shui_ji_max_zhen_wu_xian_drink_times\") }} 次",
+        },
+    }],
+    "mode": "single",
+}
+
+automations["petkit_sand_lack_notify"] = {
+    "alias": "PetKit：缺猫砂通知",
+    "trigger": [{"platform": "state", "entity_id": _pet_sand_lack, "from": "off", "to": "on"}],
+    "action": [
+        {
+            "service": _pet_notify_service,
+            "data": {
+                "title": "⚠️ 猫砂不足",
+                "message": "🧹 猫厕所猫砂不足，请及时添加",
+            },
+        },
+        {
+            "service": "todo.add_item",
+            "target": {"entity_id": _pet_todo_list},
+            "data": {"item": "补充猫砂"},
+        },
+    ],
+    "mode": "single",
+}
+
+automations["petkit_wastebin_full_notify"] = {
+    "alias": "PetKit：垃圾箱已满通知",
+    "trigger": [{"platform": "state", "entity_id": _pet_wastebin_full, "from": "off", "to": "on"}],
+    "action": [
+        {
+            "service": _pet_notify_service,
+            "data": {
+                "title": "⚠️ 垃圾箱已满",
+                "message": "🗑️ 猫厕所垃圾箱已满，请及时清理",
+            },
+        },
+        {
+            "service": "todo.add_item",
+            "target": {"entity_id": _pet_todo_list},
+            "data": {"item": "清理猫厕所垃圾箱"},
+        },
+    ],
+    "mode": "single",
+}
+
 # --- Group 7b: Pokémon → Material You Theme ---
-_material_you_image_url = "input_text.material_you_image_url_2f34e1e49f2e405d974d3169792c64d0"
+_material_you_image_url = "text.material_you_image_url_2f34e1e49f2e405d974d3169792c64d0"
 
 automations["pokemon_material_you_theme"] = {
     "alias": "主题联动：宝可梦图片同步 Material You",
@@ -252,7 +333,7 @@ automations["pokemon_material_you_theme"] = {
         {"condition": "template", "value_template": "{{ trigger.to_state.state not in ['unknown', 'unavailable', ''] }}"},
     ],
     "action": [
-        {"service": "input_text.set_value", "target": {"entity_id": _material_you_image_url}, "data": {"value": "{{ trigger.to_state.state }}"}},
+        {"service": "text.set_value", "target": {"entity_id": _material_you_image_url}, "data": {"value": "{{ trigger.to_state.state }}"}},
     ],
     "mode": "single",
 }
