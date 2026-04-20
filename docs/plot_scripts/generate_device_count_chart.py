@@ -70,6 +70,25 @@ PLOT_X = CARD_X + 380
 PLOT_W = WIDTH - CARD_X * 2 - 480
 
 # ---------------------------------------------------------------------------
+# Localization
+# ---------------------------------------------------------------------------
+CATEGORY_EN = {
+    "墙壁开关": "Wall Switches",
+    "洗护家电": "Laundry Appliances",
+    "空调/温控设备": "Climate / HVAC",
+    "灯光设备": "Lighting",
+    "窗帘/晾衣架": "Curtains / Airers",
+    "风机/净化设备": "Fans / Purifiers",
+    "清洁设备": "Cleaning",
+    "媒体设备": "Media Players",
+    "传感器/安防": "Sensors / Security",
+    "智能设备": "Smart Devices",
+}
+
+TITLE_TEXT = {"zh": "家庭设备分类统计", "en": "Home Device Categories"}
+CHIP_TEXT = {"zh": "共 {n} 台设备", "en": "{n} devices total"}
+
+# ---------------------------------------------------------------------------
 # Device classification (HA WebSocket)
 # ---------------------------------------------------------------------------
 # Manufacturers / models that are virtual (HACS, addons, integrations, …)
@@ -256,7 +275,7 @@ def _bar_colors(index: int) -> tuple[str, str, str, str]:
     return fill, badge_bg, badge_fg, track
 
 
-def build_svg(data: list[tuple[str, int]], font_path: Path | None, fc_family: str = "") -> tuple[str, int, int]:
+def build_svg(data: list[tuple[str, int]], font_path: Path | None, fc_family: str = "", lang: str = "zh") -> tuple[str, int, int]:
     """Build the SVG string. Returns (svg_content, width, height)."""
     n_rows = len(data)
     header_h = 160
@@ -315,7 +334,7 @@ def build_svg(data: list[tuple[str, int]], font_path: Path | None, fc_family: st
     # --- header ---
     hx = CARD_X + 48
     add(f'<text x="{hx}" y="{CARD_Y + 76}" font-size="48" font-weight="700" '
-        f'fill="{TOKENS["on_surface"]}">家庭设备分类统计</text>')
+        f'fill="{TOKENS["on_surface"]}">{_esc(TITLE_TEXT[lang])}</text>')
 
     # divider
     dy = CARD_Y + 112
@@ -339,8 +358,9 @@ def build_svg(data: list[tuple[str, int]], font_path: Path | None, fc_family: st
         w = (val / max_v) * PLOT_W
         fill, badge_bg, badge_fg, track = _bar_colors(i)
 
+        label = name if lang == "zh" else CATEGORY_EN.get(name, name)
         add(f'<text x="{PLOT_X - 20}" y="{y + BAR_H / 2 + 8:.1f}" text-anchor="end" '
-            f'font-size="28" font-weight="600" fill="{TOKENS["on_surface"]}">{_esc(name)}</text>')
+            f'font-size="28" font-weight="600" fill="{TOKENS["on_surface"]}">{_esc(label)}</text>')
 
         add(f'<rect x="{PLOT_X}" y="{y}" width="{PLOT_W:.1f}" height="{BAR_H}" '
             f'rx="{BAR_R}" fill="{track}"/>')
@@ -365,8 +385,8 @@ def build_svg(data: list[tuple[str, int]], font_path: Path | None, fc_family: st
 
     # --- total chip ---
     total = sum(v for _, v in data)
-    chip_text = f"共 {total} 台设备"
-    chip_w = 200
+    chip_text = CHIP_TEXT[lang].format(n=total)
+    chip_w = 240 if lang == "en" else 200
     chip_h = 44
     chip_x = CARD_X + card_w - 48 - chip_w
     chip_y = CARD_Y + card_h - 64
@@ -412,7 +432,10 @@ def export_png(svg_path: Path, png_path: Path, font_path: Path | None, w: int, h
 # Main
 # ---------------------------------------------------------------------------
 def main() -> int:
-    png_path = Path("docs/device_category_counts_md3.png")
+    outputs = [
+        ("zh", Path("docs/device_category_counts_md3.png")),
+        ("en", Path("docs/device_category_counts_md3_en.png")),
+    ]
 
     # Fetch live data from HA
     print("Fetching device data from Home Assistant...")
@@ -429,19 +452,19 @@ def main() -> int:
     if font_path:
         print(f"Using font: {font_path.name} (fc: {fc_family})")
 
-    print("Generating PNG...")
-    svg_content, w, h = build_svg(data, font_path, fc_family)
+    for lang, png_path in outputs:
+        print(f"Generating PNG ({lang})...")
+        svg_content, w, h = build_svg(data, font_path, fc_family, lang=lang)
 
-    # Write to a temp SVG for cairosvg, then delete it
-    tmp_svg = png_path.with_suffix(".tmp.svg")
-    tmp_svg.write_text(svg_content, encoding="utf-8")
-    try:
-        export_png(tmp_svg, png_path, font_path, w, h)
-    except Exception as exc:
-        print(f"PNG export failed: {exc}")
-        return 1
-    finally:
-        tmp_svg.unlink(missing_ok=True)
+        tmp_svg = png_path.with_suffix(".tmp.svg")
+        tmp_svg.write_text(svg_content, encoding="utf-8")
+        try:
+            export_png(tmp_svg, png_path, font_path, w, h)
+        except Exception as exc:
+            print(f"PNG export failed ({lang}): {exc}")
+            return 1
+        finally:
+            tmp_svg.unlink(missing_ok=True)
     return 0
 
 

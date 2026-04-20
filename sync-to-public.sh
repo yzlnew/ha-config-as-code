@@ -27,7 +27,7 @@ EXCLUDE_PATTERNS=(
     "*.pyc"
     ".venv/"
     ".claude/settings.local.json"
-    ".gemini/settings.local.json"
+    ".agents/settings.local.json"
 )
 
 # ---------- Functions ----------
@@ -80,7 +80,7 @@ sync() {
     rm -rf __pycache__
     find . -name "*.pyc" -delete
     rm -f .claude/settings.local.json
-    rm -f .gemini/settings.local.json
+    rm -f .agents/settings.local.json
 
     # Verify no secrets leaked
     echo "==> Checking for potential secrets..."

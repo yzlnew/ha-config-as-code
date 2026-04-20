@@ -5,3 +5,12 @@ __pycache__/
 .DS_Store
 .claude/settings.local.json
 docs/device_category_counts_md3.svg
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+docs/*.pdf
+docs/architecture*.png

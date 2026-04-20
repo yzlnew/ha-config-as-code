@@ -32,7 +32,11 @@ automations["bath_dehumidification_on"] = {
 automations["bath_dehumidification_off"] = {
     "alias": "环境自动：主卫除湿关闭",
 
-    "trigger": [{"platform": "numeric_state", "entity_id": "sensor.xiaomi_cn_921633051_na2_relative_humidity_p_11_9", "below": 65, "for": {"minutes": 2}}],
+    "trigger": [
+        {"platform": "numeric_state", "entity_id": "sensor.xiaomi_cn_921633051_na2_relative_humidity_p_11_9", "below": 65, "for": {"minutes": 2}},
+        {"platform": "state", "entity_id": "binary_sensor.linp_cn_1139276665_hb01_occupancy_status_p_2_1", "to": "off", "for": {"minutes": 10}},
+    ],
+    "condition": [{"condition": "state", "entity_id": "switch.xiaomi_cn_921633051_na2_ventilation_p_4_8", "state": "on"}],
     "action": [{"service": "switch.turn_off", "target": {"entity_id": "switch.xiaomi_cn_921633051_na2_ventilation_p_4_8"}}],
     "mode": "single"
 }
@@ -162,6 +166,20 @@ PRESENCE_ROOMS = [
             "light.090615_cn_2000281237_milg05_s_2_light",     # 射灯 1
             "light.090615_cn_2000196741_milg05_s_2_light",     # 射灯 2
             "light.linp_cn_949847136_ld6bcw_s_2_light",       # 存在筒射灯
+        ],
+    },
+    {
+        "id": "study",
+        "name": "书房",
+        "sensor": "binary_sensor.izq_cn_1089128418_24_occupancy_status_p_2_1",
+        "lux": "sensor.izq_cn_1089128418_24_illumination_p_2_5",
+        "off_delay": "00:01:00",
+        "light": [
+            "light.intelligent_drive_power_supply_6",          # 主灯
+            "light.intelligent_drive_power_supply_8",          # 射灯 1
+            "light.intelligent_drive_power_supply_7",          # 射灯 2
+            "light.intelligent_drive_power_supply_9",          # 射灯 3
+            "light.intelligent_drive_power_supply_10",         # 射灯 4
         ],
     },
     {
@@ -324,7 +342,7 @@ automations["petkit_wastebin_full_notify"] = {
 }
 
 # --- Group 7b: Pokémon → Material You Theme ---
-_material_you_image_url = "text.material_you_image_url_2f34e1e49f2e405d974d3169792c64d0"
+_material_you_image_url = "input_text.material_you_image_url_2f34e1e49f2e405d974d3169792c64d0"
 
 automations["pokemon_material_you_theme"] = {
     "alias": "主题联动：宝可梦图片同步 Material You",
@@ -333,7 +351,7 @@ automations["pokemon_material_you_theme"] = {
         {"condition": "template", "value_template": "{{ trigger.to_state.state not in ['unknown', 'unavailable', ''] }}"},
     ],
     "action": [
-        {"service": "text.set_value", "target": {"entity_id": _material_you_image_url}, "data": {"value": "{{ trigger.to_state.state }}"}},
+        {"service": "input_text.set_value", "target": {"entity_id": _material_you_image_url}, "data": {"value": "{{ trigger.to_state.state }}"}},
     ],
     "mode": "single",
 }
