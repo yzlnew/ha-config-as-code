@@ -6,6 +6,9 @@ __pycache__/
 .claude/settings.local.json
 docs/device_category_counts_md3.svg
 
+# The Daily — runtime snapshot rewritten every 5 min by cron
+www/the-daily/data.json
+
 # LaTeX build artifacts
 *.aux
 *.log

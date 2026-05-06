@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>The Daily — Home Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    /* —— Claude trinity tokens —— */
+    --primary:#cc785c;
+    --primary-active:#a9583e;
+    --ink:#141413;
+    --body-strong:#252523;
+    --body:#3d3d3a;
+    --muted:#6c6a64;
+    --muted-soft:#8e8b82;
+    --hairline:#e6dfd8;
+    --hairline-soft:#ebe6df;
+    --canvas:#faf9f5;
+    --surface-soft:#f5f0e8;
+    --surface-card:#efe9de;
+    --surface-cream-strong:#e8e0d2;
+    --surface-dark:#181715;
+    --surface-dark-elevated:#252320;
+    --surface-dark-soft:#1f1e1b;
+    --on-primary:#ffffff;
+    --on-dark:#faf9f5;
+    --on-dark-soft:#a09d96;
+    --accent-teal:#5db8a6;
+    --accent-amber:#e8a55a;
+    --success:#5db872;
+    --warning:#d4a017;
+    --error:#c64545;
+
+    --s-xxs:4px;  --s-xs:8px;  --s-sm:12px; --s-md:16px;
+    --s-lg:24px;  --s-xl:32px; --s-xxl:48px;
+
+    --r-sm:6px; --r-md:8px; --r-lg:12px; --r-xl:16px; --r-pill:9999px;
+
+    --serif:"Cormorant Garamond","Tiempos Headline",Garamond,"Times New Roman",serif;
+    --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,monospace;
+  }
+
+  *,*::before,*::after{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--canvas);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:15px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+
+  /* —— Page shell — tighter padding, more usable area —— */
+  .page{max-width:1320px;margin:0 auto;padding:20px 24px 28px}
+
+  /* ============================================================ */
+  /*  Masthead                                                     */
+  /* ============================================================ */
+  .masthead{
+    display:grid;grid-template-columns:1fr auto 1fr;align-items:end;
+    padding-bottom:var(--s-sm);border-bottom:1px solid var(--ink);column-gap:var(--s-lg);
+  }
+  .masthead .left,.masthead .right{
+    font-family:var(--sans);font-size:11px;font-weight:500;letter-spacing:1.5px;
+    text-transform:uppercase;color:var(--muted);
+  }
+  .masthead .right{text-align:right}
+  .wordmark{
+    display:flex;align-items:baseline;gap:9px;justify-content:center;
+    font-family:var(--serif);font-weight:500;font-size:38px;
+    letter-spacing:-0.02em;color:var(--ink);line-height:1;
+  }
+  .spike{display:inline-block;width:18px;height:18px;flex:none;transform:translateY(2px)}
+  .ed-no{font-family:var(--mono);font-size:10px;color:var(--muted-soft);letter-spacing:.5px}
+  .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent-teal);margin-right:6px;vertical-align:middle;box-shadow:0 0 0 3px rgba(93,184,166,.18)}
+
+  /* sub-meta strip */
+  .submeta{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:var(--s-xs) 0;font-size:13px;color:var(--body);
+    border-bottom:1px solid var(--hairline);
+  }
+  .submeta .lead{font-family:var(--serif);font-style:italic;font-size:17px;color:var(--body-strong);font-weight:500;letter-spacing:-0.005em}
+  .submeta .stamp{font-family:var(--mono);font-size:10.5px;color:var(--muted-soft);letter-spacing:.5px;text-transform:uppercase}
+
+  /* ============================================================ */
+  /*  Today strip — condensed editorial line                       */
+  /* ============================================================ */
+  .today-strip{
+    display:grid;grid-template-columns:auto 1fr auto;gap:var(--s-lg);align-items:center;
+    padding:var(--s-md) 0;border-bottom:1px solid var(--hairline);
+    margin-bottom:var(--s-md);
+  }
+  .kicker{font-size:11px;font-weight:500;letter-spacing:1.8px;text-transform:uppercase;color:var(--primary);white-space:nowrap}
+  .today-strip .prose{
+    margin:0;font-family:var(--serif);font-style:italic;font-size:18px;line-height:1.4;
+    letter-spacing:-0.005em;color:var(--body-strong);
+  }
+  .today-strip .prose b{font-style:normal;color:var(--ink);font-weight:500}
+  .today-strip .prose .num{font-family:var(--mono);font-size:.9em;color:var(--ink);font-style:normal;font-weight:400}
+  .today-strip .prose .accent{color:var(--primary);font-weight:500;font-style:normal}
+  .quick{display:flex;gap:var(--s-md);align-items:baseline;font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+  .quick span{display:inline-flex;gap:6px;align-items:baseline;white-space:nowrap}
+  .quick b{color:var(--ink);font-family:var(--serif);font-style:normal;font-size:20px;font-weight:500;letter-spacing:-0.02em;line-height:1}
+
+  /* ============================================================ */
+  /*  Editorial grid                                               */
+  /* ============================================================ */
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:var(--s-md);margin-top:var(--s-md)}
+  .col-3{grid-column:span 3}
+  .col-4{grid-column:span 4}
+  .col-5{grid-column:span 5}
+  .col-7{grid-column:span 7}
+  .col-12{grid-column:span 12}
+
+  .card{
+    background:var(--surface-card);
+    border-radius:var(--r-lg);
+    padding:var(--s-lg);
+    position:relative;
+  }
+  .card.cream-soft{background:var(--surface-soft)}
+  .card.canvas-bordered{background:var(--canvas);border:1px solid var(--hairline)}
+  .card.dark{background:var(--surface-dark);color:var(--on-dark)}
+
+  .card-head{
+    display:flex;justify-content:space-between;align-items:baseline;
+    padding-bottom:var(--s-sm);margin-bottom:var(--s-sm);
+    border-bottom:1px solid var(--hairline);
+  }
+  .card.dark .card-head{border-bottom:1px solid #2c2a26}
+  .section-label{font-size:11px;font-weight:500;letter-spacing:1.7px;text-transform:uppercase;color:var(--muted)}
+  .card.dark .section-label{color:var(--on-dark-soft)}
+  .section-meta{font-family:var(--mono);font-size:10.5px;color:var(--muted-soft);letter-spacing:.5px;text-transform:uppercase}
+
+  /* ============================================================ */
+  /*  THE WIRE — hero feed band, top                               */
+  /* ============================================================ */
+  .wire{padding:var(--s-lg) var(--s-lg)}
+  .wire .head{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid #2c2a26;padding-bottom:var(--s-sm);margin-bottom:var(--s-md);gap:var(--s-md)}
+  .wire-mast{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  .wire-mast h2{margin:0;font-family:var(--serif);font-weight:500;font-size:30px;letter-spacing:-0.02em;color:var(--on-dark);line-height:1}
+  .wire-mast em{font-style:italic;color:var(--on-dark-soft);font-size:15px;font-family:var(--serif)}
+  .wire-mast .live{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--accent-teal);padding-left:8px}
+  .wire-mast .live::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent-teal);box-shadow:0 0 0 3px rgba(93,184,166,.18)}
+
+  .wire-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s-lg)}
+
+  .slot{display:flex;flex-direction:column;min-height:0}
+  .slot-head{
+    display:flex;justify-content:space-between;align-items:baseline;
+    padding-bottom:6px;border-bottom:1px solid #2c2a26;margin-bottom:var(--s-xs);
+  }
+  .slot-head .name{font-family:var(--mono);font-size:10px;color:var(--accent-amber);letter-spacing:1.4px;text-transform:uppercase}
+  .slot-head .meta{font-family:var(--mono);font-size:10px;color:var(--on-dark-soft);letter-spacing:.5px;text-transform:uppercase}
+
+  .feed{list-style:none;margin:0;padding:0}
+  .feed li{
+    display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:baseline;
+    padding:8px 0;border-bottom:1px solid #25231f;
+  }
+  .feed li:last-child{border-bottom:0}
+  .feed .src{font-family:var(--mono);font-size:9.5px;color:var(--accent-amber);letter-spacing:1.2px;text-transform:uppercase}
+  .feed h5{margin:0;font-family:var(--serif);font-weight:500;font-size:15px;line-height:1.3;color:var(--on-dark);letter-spacing:-0.005em}
+  .feed h5 small{display:block;font-family:var(--sans);font-size:11.5px;font-weight:400;color:var(--on-dark-soft);font-style:normal;letter-spacing:0;line-height:1.4;margin-top:2px}
+  .feed .ago{font-family:var(--mono);font-size:9.5px;color:#6e6a63;letter-spacing:.5px;text-transform:uppercase;text-align:right;white-space:nowrap}
+
+  /* social pulse — different shape: avatar circle + handle + post */
+  .pulse{list-style:none;margin:0;padding:0}
+  .pulse li{display:grid;grid-template-columns:24px 1fr;gap:10px;padding:9px 0;border-bottom:1px solid #25231f;align-items:flex-start}
+  .pulse li:last-child{border-bottom:0}
+  .pulse .av{
+    width:24px;height:24px;border-radius:50%;background:var(--surface-dark-elevated);
+    display:inline-flex;align-items:center;justify-content:center;
+    color:var(--accent-amber);font-family:var(--mono);font-size:11px;font-weight:500;
+  }
+  .pulse .who{font-family:var(--mono);font-size:10.5px;color:var(--on-dark-soft);letter-spacing:.3px}
+  .pulse .who b{color:var(--on-dark);font-weight:500;letter-spacing:0;font-family:var(--sans);font-size:12px}
+  .pulse p{margin:2px 0 0;font-family:var(--serif);font-size:14px;line-height:1.4;color:var(--on-dark);letter-spacing:-0.005em}
+  .pulse .stat{font-family:var(--mono);font-size:9.5px;color:#6e6a63;letter-spacing:.5px;margin-top:4px;text-transform:uppercase}
+
+  /* bulletin slot — cream-tinted bullets within dark */
+  .bulletin{list-style:none;margin:0;padding:0}
+  .bulletin li{display:grid;grid-template-columns:14px 1fr auto;gap:10px;padding:9px 0;border-bottom:1px solid #25231f;align-items:baseline}
+  .bulletin li:last-child{border-bottom:0}
+  .bulletin .glyph{color:var(--accent-amber);font-family:var(--serif);font-size:14px;line-height:1}
+  .bulletin .text{color:var(--on-dark);font-size:13.5px;line-height:1.4;font-family:var(--serif);letter-spacing:-0.005em}
+  .bulletin .text small{display:block;font-family:var(--sans);font-size:11px;color:var(--on-dark-soft);margin-top:2px;letter-spacing:0}
+  .bulletin .by{font-family:var(--mono);font-size:9.5px;color:#6e6a63;letter-spacing:.5px;text-transform:uppercase}
+
+  .wire-foot{
+    display:flex;justify-content:space-between;align-items:center;
+    margin-top:var(--s-md);padding-top:var(--s-sm);border-top:1px solid #2c2a26;
+    font-family:var(--mono);font-size:10px;color:var(--on-dark-soft);letter-spacing:.5px;text-transform:uppercase;
+  }
+  .wire-foot a{color:var(--accent-teal);text-decoration:none}
+
+  /* ============================================================ */
+  /*  Calendar list                                                */
+  /* ============================================================ */
+  .schedule{display:flex;flex-direction:column}
+  .ev{display:grid;grid-template-columns:72px 1fr auto;gap:var(--s-md);padding:var(--s-sm) 0;border-top:1px solid var(--hairline-soft);align-items:start}
+  .ev:first-child{border-top:0;padding-top:6px}
+  .ev .time{font-family:var(--mono);font-size:13px;color:var(--ink);display:flex;flex-direction:column;gap:1px;line-height:1.2}
+  .ev .time span{color:var(--muted-soft);font-size:10px;letter-spacing:.5px;text-transform:uppercase}
+  .ev .body h4{margin:0;font-family:var(--serif);font-weight:500;font-size:18px;line-height:1.25;letter-spacing:-0.01em;color:var(--ink)}
+  .ev .body p{margin:2px 0 0;font-size:12.5px;color:var(--muted)}
+  .ev.now .time{color:var(--primary);font-weight:500}
+
+  /* ============================================================ */
+  /*  Tasks                                                        */
+  /* ============================================================ */
+  .tasks{list-style:none;margin:0;padding:0}
+  .task{display:grid;grid-template-columns:auto 1fr auto;gap:var(--s-sm);align-items:center;padding:9px 0;border-top:1px solid var(--hairline-soft)}
+  .task:first-child{border-top:0;padding-top:0}
+  .task .check{
+    width:17px;height:17px;border-radius:var(--r-sm);
+    border:1.5px solid var(--hairline);background:var(--canvas);
+    display:inline-flex;align-items:center;justify-content:center;flex:none;
+  }
+  .task.done .check{background:var(--primary);border-color:var(--primary)}
+  .task.done .check svg{display:block}
+  .task .check svg{display:none;width:10px;height:10px}
+  .task .label{font-size:14px;color:var(--ink)}
+  .task.done .label{color:var(--muted-soft);text-decoration:line-through;text-decoration-color:var(--hairline)}
+  .task .meta{font-family:var(--mono);font-size:10px;color:var(--muted-soft);letter-spacing:.5px;text-transform:uppercase}
+  .task-foot{margin-top:var(--s-sm);display:flex;justify-content:space-between;align-items:center;padding-top:var(--s-xs);border-top:1px solid var(--hairline-soft);font-size:12px;color:var(--muted)}
+  .task-foot a{color:var(--primary);text-decoration:none;font-weight:500}
+
+  /* ============================================================ */
+  /*  Status tiles                                                 */
+  /* ============================================================ */
+  .stat-list{display:flex;flex-direction:column}
+  .stat-row{display:grid;grid-template-columns:1fr auto;gap:var(--s-sm);padding:6px 0;border-top:1px solid var(--hairline-soft)}
+  .stat-row:first-child{border-top:0}
+  .stat-row .k{font-size:13px;color:var(--body)}
+  .stat-row .v{font-family:var(--mono);font-size:12.5px;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .stat-row .v.dim{color:var(--muted)}
+  .stat-row .v.warn{color:var(--warning)}
+  .stat-row .v.ok::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--success);margin-right:7px;transform:translateY(-1px)}
+  .pill{display:inline-flex;align-items:center;background:var(--surface-card);color:var(--ink);font-size:11px;font-weight:500;padding:2px 9px;border-radius:var(--r-pill)}
+  .pill.coral{background:var(--primary);color:var(--on-primary);text-transform:uppercase;letter-spacing:1.3px;font-size:10px}
+  .pill.dim{background:transparent;border:1px solid var(--hairline);color:var(--muted)}
+
+  .tile-num{
+    font-family:var(--serif);font-weight:500;
+    font-size:36px;line-height:1;letter-spacing:-0.02em;color:var(--ink);
+    margin-top:var(--s-xxs);
+  }
+  .tile-num small{font-family:var(--sans);font-size:12px;font-weight:500;color:var(--muted);letter-spacing:0;margin-left:6px}
+  .tile-cap{margin-top:var(--s-xs);font-size:12px;color:var(--muted);line-height:1.4}
+
+  .meter{display:flex;gap:2px;margin-top:var(--s-sm)}
+  .meter span{flex:1;height:5px;border-radius:2px;background:var(--hairline)}
+  .meter span.on{background:var(--primary)}
+
+  /* sparkline-ish faux bars for energy */
+  .bars{display:flex;gap:2px;align-items:flex-end;height:32px;margin-top:var(--s-sm)}
+  .bars span{flex:1;background:var(--hairline);border-radius:1px}
+  .bars span.hi{background:var(--primary)}
+  .bars span.mid{background:var(--accent-amber);opacity:.7}
+
+  /* ============================================================ */
+  /*  Footer ribbon                                                */
+  /* ============================================================ */
+  .ribbon{
+    margin-top:var(--s-md);
+    display:flex;justify-content:space-between;align-items:center;
+    padding:var(--s-sm) 0;
+    border-top:1px solid var(--hairline);
+    font-family:var(--mono);font-size:10px;color:var(--muted-soft);
+    letter-spacing:.5px;text-transform:uppercase;
+  }
+  .ribbon a{color:var(--primary);text-decoration:none;font-weight:500}
+
+  /* ============================================================ */
+  /*  Responsive                                                   */
+  /* ============================================================ */
+  @media (max-width: 1100px){
+    .grid{grid-template-columns:repeat(6,1fr)}
+    .col-3{grid-column:span 3}
+    .col-4{grid-column:span 6}
+    .col-5,.col-7{grid-column:span 6}
+    .wire-grid{grid-template-columns:1fr 1fr;gap:var(--s-md)}
+    .wire-grid .slot:last-child{grid-column:1 / -1}
+  }
+  @media (max-width: 720px){
+    .page{padding:16px 16px 24px}
+    .grid{grid-template-columns:1fr;gap:var(--s-sm)}
+    .col-3,.col-4,.col-5,.col-7,.col-12{grid-column:span 1}
+    .wire-grid{grid-template-columns:1fr}
+    .wire-grid .slot:last-child{grid-column:auto}
+    .today-strip{grid-template-columns:1fr;gap:var(--s-xs)}
+    .quick{flex-wrap:wrap}
+    .masthead{grid-template-columns:1fr;gap:6px;align-items:start}
+    .masthead .right{text-align:left}
+    .submeta{flex-direction:column;align-items:flex-start;gap:4px}
+    .wordmark{font-size:30px;justify-content:flex-start}
+    .ev{grid-template-columns:60px 1fr}
+    .ev > .right-pill{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ============== MASTHEAD ============== -->
+  <header class="masthead">
+    <div class="left"><span class="dot"></span>Home Assistant · all systems</div>
+    <div class="wordmark">
+      <svg class="spike" viewBox="0 0 32 32" aria-hidden="true">
+        <g fill="#141413">
+          <path d="M16 1 L17.4 14.6 L31 16 L17.4 17.4 L16 31 L14.6 17.4 L1 16 L14.6 14.6 Z"/>
+        </g>
+      </svg>
+      <span>The Daily</span>
+    </div>
+    <div class="right"><span class="ed-no">Vol. III · No. 119 · 2026</span></div>
+  </header>
+
+  <!-- ============== SUB-META ============== -->
+  <div class="submeta">
+    <div class="lead">Wednesday, April 29 · 上海 · 晴转多云 18°/26°</div>
+    <div class="stamp">refreshed 14s ago · sunset 18:32</div>
+  </div>
+
+  <!-- ============== THE WIRE (top — feeds first) ============== -->
+  <section class="grid">
+    <article class="card dark col-12 wire">
+      <div class="head">
+        <div class="wire-mast">
+          <h2>The Wire</h2>
+          <em>headlines, social signals &amp; the family bulletin.</em>
+          <span class="live">live</span>
+        </div>
+        <span class="section-meta">3 sources · refreshed 14s ago</span>
+      </div>
+
+      <div class="wire-grid">
+
+        <!-- Headlines slot -->
+        <div class="slot">
+          <div class="slot-head"><span class="name">01 — Headlines</span><span class="meta">RSS · 12 unread</span></div>
+          <ul class="feed">
+            <li>
+              <span class="src">FT</span>
+              <h5>欧元区 4 月通胀回落至 2.1%，市场押注 6 月降息<small>European inflation cools, ECB rate cut now seen as base case.</small></h5>
+              <span class="ago">12m</span>
+            </li>
+            <li>
+              <span class="src">HN</span>
+              <h5>Show HN: A tiny Home Assistant integration for ESPHome over Thread<small>Discussion · 184 points</small></h5>
+              <span class="ago">38m</span>
+            </li>
+            <li>
+              <span class="src">界面</span>
+              <h5>上海五一假期出行高峰预计 5/1 上午 8 点<small>地铁客流预计同比上升 18%。</small></h5>
+              <span class="ago">1h</span>
+            </li>
+            <li>
+              <span class="src">VRG</span>
+              <h5>Matter 1.5 spec adds camera + energy device types<small>Final review draft published by CSA.</small></h5>
+              <span class="ago">2h</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Social Pulse slot -->
+        <div class="slot">
+          <div class="slot-head"><span class="name">02 — Social Pulse</span><span class="meta">Bluesky + HN · 8</span></div>
+          <ul class="pulse">
+            <li>
+              <span class="av">k</span>
+              <div>
+                <div class="who"><b>@kenji</b> · 09:48</div>
+                <p>"今天三明治公园见，11:30 那家面包店刚开门" 🥐</p>
+                <div class="stat">DM · awaiting reply</div>
+              </div>
+            </li>
+            <li>
+              <span class="av">★</span>
+              <div>
+                <div class="who"><b>HN front page</b> · trending</div>
+                <p>"Why I switched from Hass to plain MQTT + a 200-line Python script"</p>
+                <div class="stat">412 points · 287 comments</div>
+              </div>
+            </li>
+            <li>
+              <span class="av">b</span>
+              <div>
+                <div class="who"><b>@bsky.feed</b> · 08:12</div>
+                <p>Anthropic releases Claude Opus 4.7 with 1M context window for coding agents.</p>
+                <div class="stat">1.2k reposts</div>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Bulletin slot -->
+        <div class="slot">
+          <div class="slot-head"><span class="name">03 — Bulletin</span><span class="meta">家庭便签 · 4</span></div>
+          <ul class="bulletin">
+            <li>
+              <span class="glyph">✦</span>
+              <span class="text">五一带母亲去苏州，周二订桃花源酒店<small>需确认高铁票，4/30 晚 21:00 前</small></span>
+              <span class="by">Y · 昨天</span>
+            </li>
+            <li>
+              <span class="glyph">✦</span>
+              <span class="text">猫粮还剩约一周分量，记得下单<small>顺丰急送 · 24h</small></span>
+              <span class="by">Y · 上午</span>
+            </li>
+            <li>
+              <span class="glyph">✦</span>
+              <span class="text">阳台新种的罗勒每两天浇一次水<small>下次 5/1 早晨</small></span>
+              <span class="by">automation</span>
+            </li>
+            <li>
+              <span class="glyph">✦</span>
+              <span class="text">水电费账单 5/8 自动扣款<small>预估 ¥318</small></span>
+              <span class="by">支付宝</span>
+            </li>
+          </ul>
+        </div>
+
+      </div>
+
+      <div class="wire-foot">
+        <span>connect more sources via <code style="font-family:var(--mono);color:#cfa98c">configuration.yaml › feedparser</code></span>
+        <span><a href="#">manage feeds →</a></span>
+      </div>
+    </article>
+  </section>
+
+  <!-- ============== TODAY STRIP — condensed editorial ============== -->
+  <section class="today-strip">
+    <span class="kicker">Today at home</span>
+    <p class="prose">
+      Quiet morning. Living room <b class="num">22.4°</b>, humidity <b class="num">41%</b>. The 主卫 dehumidifier finished its
+      <b class="num">38</b>-minute cycle. <span class="accent">Two Matter devices need attention</span> — kitchen dimmer reports a weak Thread link,
+      balcony sensor went quiet at <b class="num">03:14</b>.
+    </p>
+    <div class="quick">
+      <span><b>12</b> lights</span>
+      <span><b>28/29</b> mesh</span>
+      <span><b>4.82</b> kWh</span>
+    </div>
+  </section>
+
+  <!-- ============== CALENDAR + TASKS ============== -->
+  <section class="grid">
+
+    <article class="card col-7">
+      <div class="card-head">
+        <span class="section-label">On the Calendar</span>
+        <span class="section-meta">Google · 4 events</span>
+      </div>
+      <div class="schedule">
+        <div class="ev">
+          <div class="time">09:00<span>30 min</span></div>
+          <div class="body">
+            <h4>Standup with the platform team</h4>
+            <p>Daily sync · Google Meet</p>
+          </div>
+          <div class="right-pill"><span class="pill dim">work</span></div>
+        </div>
+        <div class="ev now">
+          <div class="time">11:30<span>now</span></div>
+          <div class="body">
+            <h4>Lunch with Kenji at 三明治公园</h4>
+            <p>Walking distance · 12 min</p>
+          </div>
+          <div class="right-pill"><span class="pill coral">next</span></div>
+        </div>
+        <div class="ev">
+          <div class="time">15:00<span>1 h</span></div>
+          <div class="body">
+            <h4>Code review — Matter offline fix</h4>
+            <p>Pull request #218 · review requested</p>
+          </div>
+          <div class="right-pill"><span class="pill dim">focus</span></div>
+        </div>
+        <div class="ev">
+          <div class="time">19:00<span>45 min</span></div>
+          <div class="body">
+            <h4>Evening run along the river</h4>
+            <p>Sunset 18:32 · 6 km loop</p>
+          </div>
+          <div class="right-pill"><span class="pill dim">personal</span></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="card cream-soft col-5">
+      <div class="card-head">
+        <span class="section-label">Tasks &amp; Errands</span>
+        <span class="section-meta">3 open · 1 done</span>
+      </div>
+      <ul class="tasks">
+        <li class="task">
+          <span class="check"><svg viewBox="0 0 12 12"><path d="M2 6 L5 9 L10 3" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span class="label">取菜鸟驿站快递（截止今晚）</span>
+          <span class="meta">today</span>
+        </li>
+        <li class="task">
+          <span class="check"><svg viewBox="0 0 12 12"><path d="M2 6 L5 9 L10 3" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span class="label">重置厨房 Matter 调光器</span>
+          <span class="meta">home</span>
+        </li>
+        <li class="task">
+          <span class="check"><svg viewBox="0 0 12 12"><path d="M2 6 L5 9 L10 3" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span class="label">修剪阳台橄榄树</span>
+          <span class="meta">weekend</span>
+        </li>
+        <li class="task done">
+          <span class="check"><svg viewBox="0 0 12 12"><path d="M2 6 L5 9 L10 3" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span class="label">预约牙医</span>
+          <span class="meta">done · 09:12</span>
+        </li>
+      </ul>
+      <div class="task-foot">
+        <span>via HA Shopping List + Reminders</span>
+        <a href="#">add task →</a>
+      </div>
+    </article>
+
+  </section>
+
+  <!-- ============== STATUS TILES — 4-up dense ============== -->
+  <section class="grid">
+
+    <article class="card canvas-bordered col-3">
+      <div class="card-head">
+        <span class="section-label">House</span>
+        <span class="section-meta">29 lights</span>
+      </div>
+      <div class="tile-num">12<small>on</small></div>
+      <div class="meter">
+        <span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span>
+        <span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span>
+        <span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span>
+        <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <ul class="stat-list" style="margin-top:var(--s-sm)">
+        <li class="stat-row"><span class="k">客厅</span><span class="v">3 lights · 22.4°</span></li>
+        <li class="stat-row"><span class="k">主卧</span><span class="v">1 light · 23°</span></li>
+        <li class="stat-row"><span class="k">书房</span><span class="v">2 lights</span></li>
+        <li class="stat-row"><span class="k">阳台</span><span class="v warn">offline</span></li>
+      </ul>
+    </article>
+
+    <article class="card canvas-bordered col-3">
+      <div class="card-head">
+        <span class="section-label">Climate</span>
+        <span class="section-meta">4 zones</span>
+      </div>
+      <div class="tile-num">22.4°<small>living</small></div>
+      <div class="tile-cap">Steady. Humidity 41% indoors, 58% outside.</div>
+      <ul class="stat-list" style="margin-top:var(--s-sm)">
+        <li class="stat-row"><span class="k">主卧 加湿</span><span class="v ok">running</span></li>
+        <li class="stat-row"><span class="k">主卫 除湿</span><span class="v dim">idle · 38m</span></li>
+        <li class="stat-row"><span class="k">客厅 空调</span><span class="v">heat 22°</span></li>
+        <li class="stat-row"><span class="k">外屋 PM2.5</span><span class="v">42 µg/m³</span></li>
+      </ul>
+    </article>
+
+    <article class="card canvas-bordered col-3">
+      <div class="card-head">
+        <span class="section-label">Thread Mesh</span>
+        <span class="section-meta">v1.3.0</span>
+      </div>
+      <div class="tile-num">28<small>/29 online</small></div>
+      <div class="tile-cap">3 border routers active. One device weak.</div>
+      <ul class="stat-list" style="margin-top:var(--s-sm)">
+        <li class="stat-row"><span class="k">Apple TV 电视机</span><span class="v ok">leader</span></li>
+        <li class="stat-row"><span class="k">HomePod 主卧</span><span class="v ok">router</span></li>
+        <li class="stat-row"><span class="k">HomePod 西厨</span><span class="v ok">router</span></li>
+        <li class="stat-row"><span class="k">厨房调光器</span><span class="v warn">RSSI -89</span></li>
+      </ul>
+    </article>
+
+    <article class="card canvas-bordered col-3">
+      <div class="card-head">
+        <span class="section-label">Energy &amp; Routines</span>
+        <span class="section-meta">today</span>
+      </div>
+      <div class="tile-num">4.82<small>kWh</small></div>
+      <div class="bars">
+        <span style="height:30%"></span><span style="height:42%"></span><span class="mid" style="height:55%"></span>
+        <span class="mid" style="height:68%"></span><span class="hi" style="height:90%"></span>
+        <span class="hi" style="height:75%"></span><span class="mid" style="height:48%"></span>
+        <span style="height:35%"></span><span style="height:30%"></span><span style="height:25%"></span>
+        <span style="height:20%"></span><span style="height:18%"></span>
+      </div>
+      <ul class="stat-list" style="margin-top:var(--s-sm)">
+        <li class="stat-row"><span class="k">晨间 06:30</span><span class="v dim">完成</span></li>
+        <li class="stat-row"><span class="k">归家 灯光</span><span class="v dim">待触发</span></li>
+        <li class="stat-row"><span class="k">夜安 22:30</span><span class="v dim">待触发</span></li>
+        <li class="stat-row"><span class="k">vs 月均</span><span class="v ok">−12%</span></li>
+      </ul>
+    </article>
+
+  </section>
+
+  <!-- ============== FOOTER RIBBON ============== -->
+  <footer class="ribbon">
+    <span>Home Assistant · 2026.4.1 · core ok · supervisor ok · matter v8.2.2</span>
+    <span><a href="#">customize layout</a> · last sync 14s ago</span>
+  </footer>
+
+</div>
+</body>
+</html>

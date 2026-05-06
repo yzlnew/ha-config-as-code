@@ -260,6 +260,7 @@ automations["leave_home_guard"] = {
 _pet_notify_service = "notify.mobile_app_xie_zhi_ling_de_iphone"
 _pet_todo_list = "todo.shopping_list"
 _pet_drink_times = "sensor.yin_shui_ji_max_zhen_wu_xian_drink_times"
+_pet_drinking = "binary_sensor.yin_shui_ji_max_zhen_wu_xian_pet_drinking"
 _pet_litter_occupied = "binary_sensor.zhi_neng_mao_ce_suo_max_toilet_occupied"
 _pet_sand_lack = "binary_sensor.zhi_neng_mao_ce_suo_max_sand_lack"
 _pet_wastebin_full = "binary_sensor.zhi_neng_mao_ce_suo_max_wastebin_filled"
@@ -279,23 +280,22 @@ automations["petkit_cat_toilet_notify"] = {
     "mode": "single",
 }
 
+# 注：drink_times 计数器噪声很大（PetKit 云端定时上报，常常凭空 +1/+2），
+# pet_drinking 二元传感器才反映真实饮水会话。用后者做触发可避免误通知。
 automations["petkit_cat_drink_notify"] = {
     "alias": "PetKit：Nova 喝水通知",
-    "trigger": [{"platform": "state", "entity_id": _pet_drink_times}],
-    "condition": [{
-        "condition": "template",
-        "value_template": (
-            "{{ trigger.from_state is not none and trigger.to_state is not none "
-            "and trigger.from_state.state not in ['unknown', 'unavailable'] "
-            "and trigger.to_state.state not in ['unknown', 'unavailable'] "
-            "and (trigger.to_state.state | int(0)) > (trigger.from_state.state | int(0)) }}"
-        ),
+    "trigger": [{
+        "platform": "state",
+        "entity_id": _pet_drinking,
+        "from": "off",
+        "to": "on",
+        "for": {"seconds": 5},
     }],
     "action": [{
         "service": _pet_notify_service,
         "data": {
             "title": "🐱 Nova 喝水了",
-            "message": "💧 {{ now().strftime(\"%H:%M\") }} Nova 喝了水，今日第 {{ states(\"sensor.yin_shui_ji_max_zhen_wu_xian_drink_times\") }} 次",
+            "message": "💧 {{ now().strftime(\"%H:%M\") }} Nova 在喝水，今日累计 {{ states(\"sensor.yin_shui_ji_max_zhen_wu_xian_drink_times\") }} 次",
         },
     }],
     "mode": "single",

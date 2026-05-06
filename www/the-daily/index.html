@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>The Daily — Home Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./style.css" />
+</head>
+<body data-state="loading">
+<div class="page">
+
+  <header class="masthead">
+    <div class="left"><span class="dot"></span><span data-bind="masthead.left">—</span></div>
+    <div class="wordmark">
+      <svg class="spike" viewBox="0 0 32 32" aria-hidden="true">
+        <g fill="#141413"><path d="M16 1 L17.4 14.6 L31 16 L17.4 17.4 L16 31 L14.6 17.4 L1 16 L14.6 14.6 Z"/></g>
+      </svg>
+      <span>The Daily</span>
+    </div>
+    <div class="right"><span class="ed-no" data-bind="edition">—</span></div>
+  </header>
+
+  <div class="submeta">
+    <div class="lead" data-bind="submeta.lead">—</div>
+    <div class="stamp"><span data-bind="$age">refreshed —</span><span data-bind="submeta.stamp_suffix"></span></div>
+  </div>
+
+  <!-- The Wire — top -->
+  <section class="grid">
+    <article class="card dark col-12 wire">
+      <div class="head">
+        <div class="wire-mast">
+          <h2>The Wire</h2>
+          <em>headlines, social signals &amp; the family bulletin.</em>
+          <span class="live">live</span>
+        </div>
+        <span class="section-meta"><span data-bind="wire.sources_count">—</span> sources · <span data-bind="$age">refreshed —</span></span>
+      </div>
+
+      <div class="wire-grid">
+        <div class="slot">
+          <div class="slot-head">
+            <span class="name">01 — Headlines</span>
+            <span class="meta"><span data-bind="wire.headlines_unread">—</span> from FreshRSS</span>
+          </div>
+          <ul class="feed" data-template="wire.headlines" data-empty="No items today."></ul>
+        </div>
+
+        <div class="slot" data-bind-hidden="wire.social_count">
+          <div class="slot-head">
+            <span class="name">02 — Social Pulse</span>
+            <span class="meta"><span data-bind="wire.social_count">0</span> items</span>
+          </div>
+          <ul class="pulse" data-template="wire.social" data-empty="Phase 2."></ul>
+        </div>
+
+        <div class="slot">
+          <div class="slot-head">
+            <span class="name">03 — Bulletin</span>
+            <span class="meta">家庭便签 · <span data-bind="wire.bulletin_count">—</span></span>
+          </div>
+          <ul class="bulletin" data-template="wire.bulletin" data-empty="todo.bulletin 暂无便签 · 在 HA 添加 helper 后此处会出现。"></ul>
+        </div>
+      </div>
+
+      <div class="wire-foot">
+        <span>FreshRSS · <code style="font-family:var(--mono);color:#cfa98c">/root/wiki/scripts/update_freshrss.py</code></span>
+        <span>composer cron · 5 min</span>
+      </div>
+    </article>
+  </section>
+
+  <!-- Today strip -->
+  <section class="today-strip">
+    <span class="kicker">Today at home</span>
+    <p class="prose" data-bind-html="today.prose_html">—</p>
+    <div class="quick">
+      <span><b data-bind="today.quick.lights_on">—</b> lights</span>
+      <span><b data-bind="today.quick.air">—</b> PM2.5</span>
+      <span><b data-bind="today.quick.kwh">—</b> kWh</span>
+    </div>
+  </section>
+
+  <!-- Calendar + Tasks -->
+  <section class="grid">
+
+    <article class="card col-7">
+      <div class="card-head">
+        <span class="section-label">On the Calendar</span>
+        <span class="section-meta" data-bind="calendar.label_meta">—</span>
+      </div>
+      <div class="schedule" data-template="calendar.events" data-empty="No events in the next 24 hours."></div>
+    </article>
+
+    <article class="card cream-soft col-5">
+      <div class="card-head">
+        <span class="section-label">Tasks &amp; Errands</span>
+        <span class="section-meta" data-bind="tasks.label_meta">—</span>
+      </div>
+      <ul class="tasks" data-template="tasks.items" data-empty="No tasks."></ul>
+      <div class="task-foot">
+        <span data-bind="tasks.source">—</span>
+      </div>
+    </article>
+
+  </section>
+
+  <!-- 4-up status tiles -->
+  <section class="grid">
+
+    <article class="card canvas-bordered col-3">
+      <div class="card-head">
+        <span class="section-label">House</span>
+        <span class="section-meta" data-bind="tiles.house.meta">—</span>
+      </div>
+      <div class="tile-num"><span data-bind="tiles.house.value">—</span><small data-bind="tiles.house.subscript">—</small></div>
+      <div class="meter" data-meter-on="tiles.house.meter_on" data-meter-total="tiles.house.meter_total"></div>
+      <ul class="stat-list" data-template="tiles.house.rows" style="margin-top:var(--s-sm)"></ul>
+    </article>
+
+    <article class="card canvas-bordered col-3">
+      <div class="card-head">
+        <span class="section-label">Climate</span>
+        <span class="section-meta" data-bind="tiles.climate.meta">—</span>
+      </div>
+      <div class="tile-num"><span data-bind="tiles.climate.value">—</span><small data-bind="tiles.climate.subscript">—</small></div>
+      <div class="tile-cap" data-bind="tiles.climate.caption">—</div>
+      <ul class="stat-list" data-template="tiles.climate.rows" style="margin-top:var(--s-sm)"></ul>
+    </article>
+
+    <article class="card canvas-bordered col-3">
+      <div class="card-head">
+        <span class="section-label">Air Quality</span>
+        <span class="section-meta" data-bind="tiles.air.meta">—</span>
+      </div>
+      <div class="tile-num"><span data-bind="tiles.air.value">—</span><small data-bind="tiles.air.subscript">—</small></div>
+      <div class="tile-cap" data-bind="tiles.air.caption">—</div>
+      <ul class="stat-list" data-template="tiles.air.rows" style="margin-top:var(--s-sm)"></ul>
+    </article>
+
+    <article class="card canvas-bordered col-3">
+      <div class="card-head">
+        <span class="section-label">Energy &amp; Routines</span>
+        <span class="section-meta" data-bind="tiles.energy.meta">—</span>
+      </div>
+      <div class="tile-num"><span data-bind="tiles.energy.value">—</span><small data-bind="tiles.energy.subscript">—</small></div>
+      <div class="bars" data-bars="tiles.energy.bars"></div>
+      <ul class="stat-list" data-template="tiles.energy.rows" style="margin-top:var(--s-sm)"></ul>
+    </article>
+
+  </section>
+
+  <footer class="ribbon">
+    <span data-bind="footer.system">—</span>
+    <span><span data-bind="$age">—</span></span>
+  </footer>
+
+</div>
+
+<!-- Templates for repeated items -->
+<template id="tpl-headline"><li>
+  <span class="src" data-bind="src"></span>
+  <h5><a data-attr-href="url" target="_blank" rel="noopener" data-bind="title"></a><small data-bind="small"></small></h5>
+  <span class="ago" data-bind="ago"></span>
+</li></template>
+
+<template id="tpl-pulse"><li>
+  <span class="av" data-bind="av"></span>
+  <div>
+    <div class="who"><b data-bind="who"></b> · <span data-bind="time"></span></div>
+    <p data-bind="text"></p>
+    <div class="stat" data-bind="stat"></div>
+  </div>
+</li></template>
+
+<template id="tpl-bulletin"><li>
+  <span class="glyph">✦</span>
+  <span class="text"><span data-bind="text"></span><small data-bind="small"></small></span>
+  <span class="by" data-bind="by"></span>
+</li></template>
+
+<template id="tpl-event"><div class="ev" data-class-now="is_now">
+  <div class="time"><span data-bind="time"></span><span data-bind="duration"></span></div>
+  <div class="body"><h4 data-bind="title"></h4><p data-bind="subtitle"></p></div>
+  <div class="right-pill"><span class="pill" data-class-kind-from="pill.kind" data-bind="pill.text"></span></div>
+</div></template>
+
+<template id="tpl-task"><li class="task" data-class-done="done">
+  <span class="check"><svg viewBox="0 0 12 12"><path d="M2 6 L5 9 L10 3" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+  <span class="label" data-bind="label"></span>
+  <span class="meta" data-bind="meta"></span>
+</li></template>
+
+<template id="tpl-stat-row"><li class="stat-row">
+  <span class="k" data-bind="k"></span>
+  <span class="v" data-class-kind-from="kind" data-bind="v"></span>
+</li></template>
+
+<script src="./app.js" defer></script>
+</body>
+</html>
