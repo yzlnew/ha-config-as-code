@@ -2,7 +2,81 @@
 """Create light groups by area and a light strip group, then update dashboard."""
 
 import time
-from ha_api import api
+import json
+import os
+import ssl
+from urllib.parse import urlparse
+
+import websocket
+
+from ha_api import HA_URL, TOKEN, api
+
+
+def ws_call(message_type):
+    """Call a Home Assistant WebSocket command."""
+    parsed = urlparse(HA_URL)
+    ws_url = ("wss" if parsed.scheme == "https" else "ws") + "://" + parsed.netloc + "/api/websocket"
+    ws = websocket.create_connection(ws_url, timeout=30, sslopt={"cert_reqs": ssl.CERT_NONE})
+    try:
+        msg = json.loads(ws.recv())
+        if msg.get("type") != "auth_required":
+            raise RuntimeError(f"Unexpected WebSocket greeting: {msg}")
+
+        ws.send(json.dumps({"type": "auth", "access_token": TOKEN}))
+        msg = json.loads(ws.recv())
+        if msg.get("type") != "auth_ok":
+            raise RuntimeError(f"WebSocket auth failed: {msg}")
+
+        ws.send(json.dumps({"id": 1, "type": message_type}))
+        while True:
+            msg = json.loads(ws.recv())
+            if msg.get("id") == 1:
+                if not msg.get("success"):
+                    raise RuntimeError(f"WebSocket call failed: {msg}")
+                return msg["result"]
+    finally:
+        ws.close()
+
+
+def existing_light_groups():
+    """Return existing light group entity registry entries by original name."""
+    entries = ws_call("config/entity_registry/list")
+    result = {}
+    for entry in entries:
+        if entry.get("platform") != "group":
+            continue
+        entity_id = entry.get("entity_id", "")
+        if not entity_id.startswith("light."):
+            continue
+        name = entry.get("original_name") or entry.get("name")
+        if not name:
+            continue
+
+        current = result.get(name)
+        if current is None or entry.get("created_at", 0) < current.get("created_at", 0):
+            result[name] = entry
+    return result
+
+
+def update_light_group(entry_id, name, entities):
+    """Update an existing light group helper through its options flow."""
+    result = api("POST", "/api/config/config_entries/options/flow", {
+        "handler": entry_id,
+    })
+    flow_id = result["flow_id"]
+
+    result = api("POST", f"/api/config/config_entries/options/flow/{flow_id}", {
+        "entities": entities,
+        "hide_members": False,
+        "all": False,
+    })
+
+    if result.get("type") == "create_entry":
+        print(f"  [OK] updated {name}")
+        return True
+
+    print(f"  [FAIL] update {name}: {result}")
+    return False
 
 
 def create_light_group(name, entities):
@@ -122,6 +196,7 @@ groups = {
         "light.intelligent_drive_power_supply_10",       # 射灯4
         "light.magical_homes_color_light_2",             # 书房灯带
         "light.lemesh_cn_2000705436_wy0d02_s_2_light",  # 书房氛围灯带
+        "light.esp32_d1_mini_moonside_moonside_lamp",   # Moonside 灯
     ],
     "阳台灯光": [
         "light.magical_homes_color_light",               # 灯带
@@ -162,14 +237,36 @@ groups = {
     ],
 }
 
-print("Creating light groups...")
-created = {}
-for name, entities in groups.items():
-    entity_id = create_light_group(name, entities)
-    if entity_id:
-        created[name] = entity_id
-    time.sleep(0.3)  # small delay between requests
+def selected_groups():
+    """Filter groups with HA_LIGHT_GROUPS=书房灯光,客厅灯光 when needed."""
+    names = os.getenv("HA_LIGHT_GROUPS")
+    if not names:
+        return groups
 
-print(f"\nCreated {len(created)}/{len(groups)} groups")
-for name, eid in created.items():
-    print(f"  {name}: {eid}")
+    wanted = {name.strip() for name in names.split(",") if name.strip()}
+    return {name: entities for name, entities in groups.items() if name in wanted}
+
+
+def main():
+    existing = existing_light_groups()
+    selected = selected_groups()
+
+    print("Syncing light groups...")
+    synced = {}
+    for name, entities in selected.items():
+        if name in existing:
+            if update_light_group(existing[name]["config_entry_id"], name, entities):
+                synced[name] = existing[name]["entity_id"]
+        else:
+            entity_id = create_light_group(name, entities)
+            if entity_id:
+                synced[name] = entity_id
+        time.sleep(0.3)  # small delay between requests
+
+    print(f"\nSynced {len(synced)}/{len(selected)} groups")
+    for name, eid in synced.items():
+        print(f"  {name}: {eid}")
+
+
+if __name__ == "__main__":
+    main()

@@ -1022,6 +1022,14 @@ home_view = {
         # --- Section 3: 设备与影音 ---
         section("设备与影音", [
             mushroom_light("light.trytogo", "Trytogo", "mdi:lightbulb-group"),
+            mushroom_light("light.esp32_d1_mini_moonside_moonside_lamp", "Moonside", "mdi:lamp"),
+            mushroom_select(
+                "select.esp32_d1_mini_moonside_moonside_dynamic_effect",
+                "Moonside Theme",
+                "mdi:palette",
+                "purple",
+                style=MD3_SELECT_STYLE,
+            ),
             mushroom_select(
                 "select.trytogo_gradient_scene",
                 "Gradient Scene",

@@ -13,6 +13,7 @@ from ha_api import HA_URL, TOKEN, api, put_automation, call_service
 # Automation Definitions
 # ============================================================
 automations = {}
+PRIMARY_NOTIFY_SERVICE = "notify.mobile_app_ye_zhi_ling_de_iphone"
 
 # Note: Physical Switch Bindings (会客/影音/睡眠) are managed by setup_scenes.py
 # which handles both ON and OFF directions. Do not duplicate here.
@@ -51,14 +52,16 @@ automations["welcome_home_mode"] = {
         {"platform": "state", "entity_id": "input_boolean.zai_jia_que_ren", "from": "off", "to": "on"},
         {"platform": "state", "entity_id": "event.lumi_cn_1011935590_bzacn1_lock_opened_e_2_1"},
     ],
-    "condition": [{"condition": "numeric_state", "entity_id": "sensor.linp_cn_949882702_ld6bcw_illumination_p_5_5", "below": 10}],
+    "condition": [
+        {"condition": "template", "value_template": "{{ now().hour >= 17 or now().hour < 2 }}"},
+        {"condition": "template", "value_template": "{{ [states('sensor.linp_cn_2079472416_ec1db_illumination_p_3_1') | float(999), states('sensor.linp_cn_2079495198_ec1db_illumination_p_3_1') | float(999)] | max < 30 }}"},
+    ],
     "action": [
         {"service": "input_boolean.turn_on", "target": {"entity_id": "input_boolean.ren_lai_ren_zou_zi_dong_deng"}},
         {"service": "light.turn_on", "target": {"entity_id": [
-            "light.xi_chu_deng_guang",
-            "light.ke_ting_dian_shi_gui_dao",
-            "light.ke_ting_sha_fa_gui_dao",
-            "light.ke_ting_zhuo_zi_gui_dao",
+            "light.intelligent_drive_power_supply",          # 厨房入口射灯
+            "light.intelligent_drive_power_supply_3",        # 进门射灯
+            "light.lemesh_cn_2023151493_wy0d02_s_2_light",  # 鞋柜灯带
         ]}},
     ],
     "mode": "single"
@@ -95,7 +98,7 @@ automations["water_leak_alert"] = {
     ],
     "action": [
         {"service": "light.turn_on", "target": {"entity_id": "light.moes_matter_light"}, "data": {"flash": "long", "rgb_color": [255, 0, 0]}},
-        {"service": "notify.mobile_app_iphone18_2", "data": {"title": "【紧急】发现漏水！", "message": "厨房水浸传感器检测到漏水，请尽快处理。", "data": {"push": {"sound": "US-EN-Morgan-Freeman-Kitchen-Is-Flooding.wav", "critical": 1}}}}
+        {"service": PRIMARY_NOTIFY_SERVICE, "data": {"title": "【紧急】发现漏水！", "message": "厨房水浸传感器检测到漏水，请尽快处理。", "data": {"push": {"sound": "US-EN-Morgan-Freeman-Kitchen-Is-Flooding.wav", "critical": 1}}}}
     ],
     "mode": "single"
 }
@@ -113,6 +116,38 @@ automations["appletv_trytogo_off"] = {
     "trigger": [{"platform": "state", "entity_id": "media_player.dian_shi_ji", "to": "off"}],
     "action": [{"service": "light.turn_off", "target": {"entity_id": "light.trytogo"}}],
     "mode": "single",
+}
+
+# --- Group 4c: Adaptive Lighting bridge for ESPHome BLE lamps ---
+automations["adaptive_lighting_laifen_bridge"] = {
+    "alias": "自适应照明：Laifen 跟随书房",
+    "trigger": [
+        {"platform": "state", "entity_id": "switch.adaptive_lighting_shu_fang", "attribute": "brightness_pct"},
+        {"platform": "state", "entity_id": "switch.adaptive_lighting_shu_fang", "attribute": "color_temp_kelvin"},
+        {"platform": "state", "entity_id": "switch.adaptive_lighting_shu_fang", "from": "off", "to": "on"},
+        {"platform": "state", "entity_id": [
+            "switch.esp32_d1_mini_laifen_bridge_laifen_master_light",
+            "switch.esp32_d1_mini_laifen_bridge_laifen_upper_light",
+            "switch.esp32_d1_mini_laifen_bridge_laifen_lower_light",
+        ], "from": "off", "to": "on"},
+        {"platform": "homeassistant", "event": "start"},
+    ],
+    "condition": [
+        {"condition": "state", "entity_id": "switch.adaptive_lighting_shu_fang", "state": "on"},
+        {"condition": "template", "value_template": "{{ is_state('switch.esp32_d1_mini_laifen_bridge_laifen_master_light', 'on') or is_state('switch.esp32_d1_mini_laifen_bridge_laifen_upper_light', 'on') or is_state('switch.esp32_d1_mini_laifen_bridge_laifen_lower_light', 'on') }}"},
+    ],
+    "action": [
+        {"service": "number.set_value", "target": {"entity_id": "number.esp32_d1_mini_laifen_bridge_laifen_color_temperature"}, "data": {
+            "value": "{% set base = state_attr('switch.adaptive_lighting_shu_fang', 'color_temp_kelvin') | float(5000) %}{% set clamped = [2700, [base, 6500] | min] | max %}{{ ((clamped / 100) | round(0) * 100) | int }}"
+        }},
+        {"service": "number.set_value", "target": {"entity_id": "number.esp32_d1_mini_laifen_bridge_laifen_upper_brightness"}, "data": {
+            "value": "{% set base = state_attr('switch.adaptive_lighting_shu_fang', 'brightness_pct') | float(70) %}{% set clamped = [1, [base * 1.15, 100] | min] | max %}{{ clamped | round(0) | int }}"
+        }},
+        {"service": "number.set_value", "target": {"entity_id": "number.esp32_d1_mini_laifen_bridge_laifen_lower_brightness"}, "data": {
+            "value": "{% set base = state_attr('switch.adaptive_lighting_shu_fang', 'brightness_pct') | float(70) %}{% set clamped = [1, [base * 0.35, 45] | min] | max %}{{ clamped | round(0) | int }}"
+        }},
+    ],
+    "mode": "restart",
 }
 
 # --- Group 5: Presence Lighting (人来灯开，人走灯灭) ---
@@ -148,12 +183,7 @@ PRESENCE_ROOMS = [
         "sensor": "binary_sensor.linp_cn_949882702_ld6bcw_occupancy_status_p_5_1",
         "off_delay": "00:01:00",
         "light": [
-            "light.intelligent_drive_power_supply_22",         # 主灯
-            "light.intelligent_drive_power_supply_20",         # 左射灯
-            "light.intelligent_drive_power_supply_21",         # 右射灯
-            "light.intelligent_drive_power_supply_18",         # 床头左射灯
-            "light.intelligent_drive_power_supply_19",         # 床头右射灯
-            "light.linp_cn_949882702_ld6bcw_s_2_light",       # 存在筒射灯
+            "light.yeelink_cn_125156913_lamp4_s_2_light",     # 台灯
         ],
     },
     {
@@ -174,12 +204,11 @@ PRESENCE_ROOMS = [
         "sensor": "binary_sensor.izq_cn_1089128418_24_occupancy_status_p_2_1",
         "lux": "sensor.izq_cn_1089128418_24_illumination_p_2_5",
         "off_delay": "00:01:00",
+        "turn_on_service": "homeassistant.turn_on",
+        "turn_off_service": "homeassistant.turn_off",
         "light": [
-            "light.intelligent_drive_power_supply_6",          # 主灯
-            "light.intelligent_drive_power_supply_8",          # 射灯 1
-            "light.intelligent_drive_power_supply_7",          # 射灯 2
-            "light.intelligent_drive_power_supply_9",          # 射灯 3
-            "light.intelligent_drive_power_supply_10",         # 射灯 4
+            "switch.esp32_d1_mini_laifen_bridge_laifen_master_light",  # Laifen
+            "light.esp32_d1_mini_moonside_moonside_lamp",              # Moonside
         ],
     },
     {
@@ -208,7 +237,7 @@ for room in PRESENCE_ROOMS:
         "alias": f"人来灯开：{room['name']}",
         "trigger": [{"platform": "state", "entity_id": room["sensor"], "from": "off", "to": "on"}],
         "condition": on_conditions,
-        "action": [{"service": "light.turn_on", "target": {"entity_id": room["light"]}}],
+        "action": [{"service": room.get("turn_on_service", "light.turn_on"), "target": {"entity_id": room["light"]}}],
         "mode": "single",
     }
     # --- 人走灯灭 ---
@@ -222,7 +251,7 @@ for room in PRESENCE_ROOMS:
         "condition": [
             {"condition": "state", "entity_id": PRESENCE_TOGGLE, "state": "on"},
         ],
-        "action": [{"service": "light.turn_off", "target": {"entity_id": room["light"]}}],
+        "action": [{"service": room.get("turn_off_service", "light.turn_off"), "target": {"entity_id": room["light"]}}],
         "mode": "single",
     }
 
@@ -248,7 +277,7 @@ automations["leave_home_guard"] = {
             "media_player.tcl_85q10l_pro", "media_player.ke_ting", "media_player.xi_chu",
         ]}},
         {"service": "input_boolean.turn_off", "target": {"entity_id": PRESENCE_TOGGLE}},
-        {"service": "notify.mobile_app_iphone18_2", "data": {
+        {"service": PRIMARY_NOTIFY_SERVICE, "data": {
             "title": "离家守护已激活",
             "message": "在家确认已关闭，灯光、空调、影音设备已自动关闭。",
         }},
@@ -257,7 +286,7 @@ automations["leave_home_guard"] = {
 }
 
 # --- Group 7: Pet Feeder Daily Tracking ---
-_pet_notify_service = "notify.mobile_app_xie_zhi_ling_de_iphone"
+_pet_notify_service = PRIMARY_NOTIFY_SERVICE
 _pet_todo_list = "todo.shopping_list"
 _pet_drink_times = "sensor.yin_shui_ji_max_zhen_wu_xian_drink_times"
 _pet_drinking = "binary_sensor.yin_shui_ji_max_zhen_wu_xian_pet_drinking"
