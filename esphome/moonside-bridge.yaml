@@ -1,0 +1,552 @@
+substitutions:
+  device_name: esp32-d1-mini-moonside
+  friendly_name: ESP32 D1 Mini Moonside
+  moonside_mac: "A4:F0:0F:8B:A6:F6"
+  nus_service_uuid: "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
+  nus_rx_char_uuid: "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  comment: "BLE bridge for Moonside lamps using Nordic UART Service ASCII commands."
+  on_boot:
+    priority: -100
+    then:
+      - delay: 5s
+      - script.execute:
+          id: moonside_send
+          cmd: "LEDON"
+      - delay: 300ms
+      - script.execute:
+          id: moonside_send
+          cmd: "BRIGH080"
+      - delay: 300ms
+      - script.execute:
+          id: moonside_send
+          cmd: "COLOR255180050"
+
+esp32:
+  board: wemos_d1_mini32
+  framework:
+    type: esp-idf
+
+logger:
+  level: INFO
+
+api:
+
+ota:
+  - platform: esphome
+
+wifi:
+  ap:
+    ssid: "${friendly_name}"
+    password: !env_var ESPHOME_FALLBACK_AP_PASSWORD
+
+captive_portal:
+
+improv_serial:
+
+web_server:
+  port: 80
+  version: 3
+
+esp32_ble_tracker:
+  scan_parameters:
+    interval: 320ms
+    window: 320ms
+    active: false
+
+ble_client:
+  - mac_address: ${moonside_mac}
+    id: moonside_client
+    auto_connect: true
+    on_connect:
+      then:
+        - logger.log: "Connected to Moonside lamp"
+    on_disconnect:
+      then:
+        - logger.log: "Disconnected from Moonside lamp"
+
+globals:
+  - id: moonside_red
+    type: float
+    initial_value: "1.0"
+  - id: moonside_green
+    type: float
+    initial_value: "0.706"
+  - id: moonside_blue
+    type: float
+    initial_value: "0.196"
+  - id: moonside_brightness
+    type: int
+    initial_value: "80"
+  - id: moonside_accent_red
+    type: int
+    initial_value: "0"
+  - id: moonside_accent_green
+    type: int
+    initial_value: "0"
+  - id: moonside_accent_blue
+    type: int
+    initial_value: "140"
+
+script:
+  - id: moonside_send
+    mode: queued
+    max_runs: 10
+    parameters:
+      cmd: string
+    then:
+      - wait_until:
+          condition:
+            lambda: return id(moonside_client).connected();
+          timeout: 20s
+      - if:
+          condition:
+            lambda: return id(moonside_client).connected();
+          then:
+            - logger.log:
+                format: "Moonside TX: %s"
+                args: ["cmd.c_str()"]
+            - ble_client.ble_write:
+                id: moonside_client
+                service_uuid: ${nus_service_uuid}
+                characteristic_uuid: ${nus_rx_char_uuid}
+                value: !lambda |-
+                  return std::vector<uint8_t>(cmd.begin(), cmd.end());
+          else:
+            - logger.log:
+                level: WARN
+                format: "Moonside TX skipped, BLE not connected: %s"
+                args: ["cmd.c_str()"]
+
+  - id: moonside_send_brightness
+    mode: restart
+    then:
+      - script.execute:
+          id: moonside_send
+          cmd: !lambda |-
+            char buffer[9];
+            snprintf(buffer, sizeof(buffer), "BRIGH%03d", id(moonside_brightness));
+            return std::string(buffer);
+
+  - id: moonside_send_current_color
+    mode: restart
+    then:
+      - delay: 200ms
+      - script.execute:
+          id: moonside_send
+          cmd: "LEDON"
+      - delay: 150ms
+      - script.execute: moonside_send_brightness
+      - delay: 150ms
+      - script.execute:
+          id: moonside_send
+          cmd: !lambda |-
+            const int r = clamp(static_cast<int>(roundf(id(moonside_red) * 255.0f)), 0, 255);
+            const int g = clamp(static_cast<int>(roundf(id(moonside_green) * 255.0f)), 0, 255);
+            const int b = clamp(static_cast<int>(roundf(id(moonside_blue) * 255.0f)), 0, 255);
+            char buffer[16];
+            snprintf(buffer, sizeof(buffer), "COLOR%03d%03d%03d", r, g, b);
+            return std::string(buffer);
+
+  - id: moonside_send_custom_beat
+    mode: restart
+    then:
+      - script.execute:
+          id: moonside_send
+          cmd: "LEDON"
+      - delay: 150ms
+      - script.execute: moonside_send_brightness
+      - delay: 150ms
+      - script.execute:
+          id: moonside_send
+          cmd: !lambda |-
+            const int r = clamp(static_cast<int>(roundf(id(moonside_red) * 255.0f)), 0, 255);
+            const int g = clamp(static_cast<int>(roundf(id(moonside_green) * 255.0f)), 0, 255);
+            const int b = clamp(static_cast<int>(roundf(id(moonside_blue) * 255.0f)), 0, 255);
+            char buffer[48];
+            snprintf(
+              buffer,
+              sizeof(buffer),
+              "THEME.BEAT2.%03d,%03d,%03d,%03d,%03d,%03d,",
+              r,
+              g,
+              b,
+              id(moonside_accent_red),
+              id(moonside_accent_green),
+              id(moonside_accent_blue)
+            );
+            return std::string(buffer);
+
+  - id: moonside_send_custom_fire
+    mode: restart
+    then:
+      - script.execute:
+          id: moonside_send
+          cmd: "LEDON"
+      - delay: 150ms
+      - script.execute: moonside_send_brightness
+      - delay: 150ms
+      - script.execute:
+          id: moonside_send
+          cmd: !lambda |-
+            const int r = clamp(static_cast<int>(roundf(id(moonside_red) * 255.0f)), 0, 255);
+            const int g = clamp(static_cast<int>(roundf(id(moonside_green) * 255.0f)), 0, 255);
+            const int b = clamp(static_cast<int>(roundf(id(moonside_blue) * 255.0f)), 0, 255);
+            char buffer[32];
+            snprintf(buffer, sizeof(buffer), "THEME.FIRE2.%03d,%03d,%03d,", r, g, b);
+            return std::string(buffer);
+
+  - id: moonside_send_custom_gradient
+    mode: restart
+    then:
+      - script.execute:
+          id: moonside_send
+          cmd: "LEDON"
+      - delay: 150ms
+      - script.execute: moonside_send_brightness
+      - delay: 150ms
+      - script.execute:
+          id: moonside_send
+          cmd: !lambda |-
+            const int r = clamp(static_cast<int>(roundf(id(moonside_red) * 255.0f)), 0, 255);
+            const int g = clamp(static_cast<int>(roundf(id(moonside_green) * 255.0f)), 0, 255);
+            const int b = clamp(static_cast<int>(roundf(id(moonside_blue) * 255.0f)), 0, 255);
+            char buffer[56];
+            snprintf(
+              buffer,
+              sizeof(buffer),
+              "THEME.GRADIENT1.%03d,%03d,%03d,%03d,%03d,%03d",
+              r,
+              g,
+              b,
+              id(moonside_accent_red),
+              id(moonside_accent_green),
+              id(moonside_accent_blue)
+            );
+            return std::string(buffer);
+
+output:
+  - platform: template
+    id: moonside_red_output
+    type: float
+    write_action:
+      - lambda: id(moonside_red) = state;
+      - script.execute: moonside_send_current_color
+
+  - platform: template
+    id: moonside_green_output
+    type: float
+    write_action:
+      - lambda: id(moonside_green) = state;
+      - script.execute: moonside_send_current_color
+
+  - platform: template
+    id: moonside_blue_output
+    type: float
+    write_action:
+      - lambda: id(moonside_blue) = state;
+      - script.execute: moonside_send_current_color
+
+light:
+  - platform: rgb
+    name: "Moonside Lamp"
+    id: moonside_lamp
+    red: moonside_red_output
+    green: moonside_green_output
+    blue: moonside_blue_output
+    restore_mode: RESTORE_DEFAULT_ON
+
+number:
+  - platform: template
+    name: "Moonside Brightness"
+    id: moonside_brightness_number
+    min_value: 0
+    max_value: 120
+    step: 1
+    optimistic: true
+    restore_value: true
+    initial_value: 80
+    set_action:
+      - lambda: id(moonside_brightness) = static_cast<int>(x);
+      - script.execute: moonside_send_brightness
+
+  - platform: template
+    name: "Moonside Accent Red"
+    id: moonside_accent_red_number
+    min_value: 0
+    max_value: 255
+    step: 1
+    optimistic: true
+    restore_value: true
+    initial_value: 0
+    set_action:
+      - lambda: id(moonside_accent_red) = static_cast<int>(x);
+
+  - platform: template
+    name: "Moonside Accent Green"
+    id: moonside_accent_green_number
+    min_value: 0
+    max_value: 255
+    step: 1
+    optimistic: true
+    restore_value: true
+    initial_value: 0
+    set_action:
+      - lambda: id(moonside_accent_green) = static_cast<int>(x);
+
+  - platform: template
+    name: "Moonside Accent Blue"
+    id: moonside_accent_blue_number
+    min_value: 0
+    max_value: 255
+    step: 1
+    optimistic: true
+    restore_value: true
+    initial_value: 140
+    set_action:
+      - lambda: id(moonside_accent_blue) = static_cast<int>(x);
+
+select:
+  - platform: template
+    name: "Moonside Color Preset"
+    optimistic: true
+    initial_option: "Sunset"
+    options:
+      - "Sunset"
+      - "Warm White"
+      - "Cool White"
+      - "Red"
+      - "Orange"
+      - "Green"
+      - "Cyan"
+      - "Blue"
+      - "Purple"
+      - "Pink"
+    set_action:
+      - lambda: |-
+          if (x == "Sunset") {
+            id(moonside_red) = 1.0f;
+            id(moonside_green) = 0.706f;
+            id(moonside_blue) = 0.196f;
+          } else if (x == "Warm White") {
+            id(moonside_red) = 1.0f;
+            id(moonside_green) = 0.82f;
+            id(moonside_blue) = 0.50f;
+          } else if (x == "Cool White") {
+            id(moonside_red) = 0.80f;
+            id(moonside_green) = 0.90f;
+            id(moonside_blue) = 1.0f;
+          } else if (x == "Red") {
+            id(moonside_red) = 1.0f;
+            id(moonside_green) = 0.0f;
+            id(moonside_blue) = 0.0f;
+          } else if (x == "Orange") {
+            id(moonside_red) = 1.0f;
+            id(moonside_green) = 0.35f;
+            id(moonside_blue) = 0.0f;
+          } else if (x == "Green") {
+            id(moonside_red) = 0.0f;
+            id(moonside_green) = 1.0f;
+            id(moonside_blue) = 0.25f;
+          } else if (x == "Cyan") {
+            id(moonside_red) = 0.0f;
+            id(moonside_green) = 0.85f;
+            id(moonside_blue) = 1.0f;
+          } else if (x == "Blue") {
+            id(moonside_red) = 0.0f;
+            id(moonside_green) = 0.16f;
+            id(moonside_blue) = 1.0f;
+          } else if (x == "Purple") {
+            id(moonside_red) = 0.78f;
+            id(moonside_green) = 0.0f;
+            id(moonside_blue) = 1.0f;
+          } else if (x == "Pink") {
+            id(moonside_red) = 1.0f;
+            id(moonside_green) = 0.0f;
+            id(moonside_blue) = 0.55f;
+          }
+      - script.execute: moonside_send_current_color
+
+  - platform: template
+    name: "Moonside Dynamic Effect"
+    optimistic: true
+    initial_option: "Working Beat"
+    options:
+      - "Solid Color"
+      - "Working Beat"
+      - "Idle Celebration"
+      - "Ocean Beat"
+      - "Sunset Beat"
+      - "Aurora Beat"
+      - "Fire Beat"
+      - "Fire 2"
+      - "Rainbow 3"
+      - "Gradient 1"
+      - "Purple Beat"
+      - "Mint Beat"
+      - "Custom Beat"
+      - "Custom Fire 2"
+      - "Custom Gradient"
+    set_action:
+      - if:
+          condition:
+            lambda: 'return x == "Solid Color";'
+          then:
+            - script.execute: moonside_send_current_color
+      - if:
+          condition:
+            lambda: 'return x == "Working Beat";'
+          then:
+            - script.execute:
+                id: moonside_send
+                cmd: "THEME.BEAT2.255,255,255,0,0,140,"
+      - if:
+          condition:
+            lambda: 'return x == "Idle Celebration";'
+          then:
+            - script.execute:
+                id: moonside_send
+                cmd: "THEME.BEAT2.060,255,120,000,120,060,"
+      - if:
+          condition:
+            lambda: 'return x == "Ocean Beat";'
+          then:
+            - script.execute:
+                id: moonside_send
+                cmd: "THEME.BEAT2.000,180,255,000,020,120,"
+      - if:
+          condition:
+            lambda: 'return x == "Sunset Beat";'
+          then:
+            - script.execute:
+                id: moonside_send
+                cmd: "THEME.BEAT2.255,120,030,150,000,080,"
+      - if:
+          condition:
+            lambda: 'return x == "Aurora Beat";'
+          then:
+            - script.execute:
+                id: moonside_send
+                cmd: "THEME.BEAT2.000,255,160,120,000,255,"
+      - if:
+          condition:
+            lambda: 'return x == "Fire Beat";'
+          then:
+            - script.execute:
+                id: moonside_send
+                cmd: "THEME.BEAT2.255,040,000,255,180,000,"
+      - if:
+          condition:
+            lambda: 'return x == "Fire 2";'
+          then:
+            - script.execute:
+                id: moonside_send
+                cmd: "THEME.FIRE2.255,050,000,"
+      - if:
+          condition:
+            lambda: 'return x == "Rainbow 3";'
+          then:
+            - script.execute:
+                id: moonside_send
+                cmd: "THEME.RAINBOW3"
+      - if:
+          condition:
+            lambda: 'return x == "Gradient 1";'
+          then:
+            - script.execute:
+                id: moonside_send
+                cmd: "THEME.GRADIENT1.255,0,0,0,0,255"
+      - if:
+          condition:
+            lambda: 'return x == "Purple Beat";'
+          then:
+            - script.execute:
+                id: moonside_send
+                cmd: "THEME.BEAT2.200,000,255,040,000,120,"
+      - if:
+          condition:
+            lambda: 'return x == "Mint Beat";'
+          then:
+            - script.execute:
+                id: moonside_send
+                cmd: "THEME.BEAT2.120,255,200,000,120,060,"
+      - if:
+          condition:
+            lambda: 'return x == "Custom Beat";'
+          then:
+            - script.execute: moonside_send_custom_beat
+      - if:
+          condition:
+            lambda: 'return x == "Custom Fire 2";'
+          then:
+            - script.execute: moonside_send_custom_fire
+      - if:
+          condition:
+            lambda: 'return x == "Custom Gradient";'
+          then:
+            - script.execute: moonside_send_custom_gradient
+
+button:
+  - platform: template
+    name: "Moonside On"
+    on_press:
+      - script.execute:
+          id: moonside_send
+          cmd: "LEDON"
+
+  - platform: template
+    name: "Moonside Off"
+    on_press:
+      - script.execute:
+          id: moonside_send
+          cmd: "LEDOFF"
+
+  - platform: template
+    name: "Moonside Working Theme"
+    on_press:
+      - script.execute:
+          id: moonside_send
+          cmd: "THEME.BEAT2.255,255,255,0,0,140,"
+
+  - platform: template
+    name: "Moonside Custom Beat"
+    on_press:
+      - script.execute: moonside_send_custom_beat
+
+  - platform: template
+    name: "Moonside Custom Fire 2"
+    on_press:
+      - script.execute: moonside_send_custom_fire
+
+  - platform: template
+    name: "Moonside Custom Gradient"
+    on_press:
+      - script.execute: moonside_send_custom_gradient
+
+  - platform: template
+    name: "Moonside Sunset"
+    on_press:
+      - script.execute:
+          id: moonside_send
+          cmd: "LEDON"
+      - delay: 200ms
+      - script.execute:
+          id: moonside_send
+          cmd: "COLOR255180050"
+
+  - platform: template
+    name: "Moonside Purple"
+    on_press:
+      - script.execute:
+          id: moonside_send
+          cmd: "LEDON"
+      - delay: 200ms
+      - script.execute:
+          id: moonside_send
+          cmd: "COLOR200000255"
+
+  - platform: restart
+    name: "Moonside Restart"

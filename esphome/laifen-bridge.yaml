@@ -1,0 +1,346 @@
+substitutions:
+  device_name: esp32-d1-mini-laifen-bridge
+  friendly_name: ESP32 D1 Mini Laifen Bridge
+  laifen_mac: "ED:62:45:56:05:20"
+  laifen_service_uuid: "0000ff01-0000-1000-8000-00805f9b34fb"
+  laifen_control_char_uuid: "0000ff02-0000-1000-8000-00805f9b34fb"
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  comment: "BLE bridge for Laifen L1 Pro floor lamp. Commands inferred from Android HCI snoop."
+  on_boot:
+    priority: -100
+    then:
+      - delay: 5s
+      - script.execute: laifen_init
+
+esp32:
+  board: wemos_d1_mini32
+  framework:
+    type: esp-idf
+
+logger:
+  level: DEBUG
+
+api:
+
+ota:
+  - platform: esphome
+
+wifi:
+  ap:
+    ssid: "${friendly_name}"
+    password: !env_var ESPHOME_FALLBACK_AP_PASSWORD
+
+captive_portal:
+
+improv_serial:
+
+web_server:
+  port: 80
+  version: 3
+
+esp32_ble_tracker:
+  scan_parameters:
+    interval: 320ms
+    window: 320ms
+    active: false
+
+ble_client:
+  - mac_address: ${laifen_mac}
+    id: laifen_client
+    auto_connect: true
+    on_connect:
+      then:
+        - logger.log: "Connected to Laifen L1 Pro"
+        - delay: 2s
+        - script.execute: laifen_init
+    on_disconnect:
+      then:
+        - logger.log:
+            level: WARN
+            format: "Disconnected from Laifen L1 Pro"
+        - lambda: id(laifen_accept_commands) = false;
+
+text_sensor:
+  - platform: ble_client
+    ble_client_id: laifen_client
+    name: "Laifen Raw Notify"
+    id: laifen_raw_notify
+    internal: true
+    service_uuid: ${laifen_service_uuid}
+    characteristic_uuid: ${laifen_control_char_uuid}
+    notify: true
+    update_interval: never
+    on_notify:
+      then:
+        - lambda: |-
+            std::vector<uint8_t> bytes(x.begin(), x.end());
+            ESP_LOGD("laifen", "Laifen RX %s", format_hex_pretty(bytes).c_str());
+
+globals:
+  - id: laifen_accept_commands
+    type: bool
+    initial_value: "false"
+
+script:
+  - id: laifen_raw_write
+    mode: queued
+    max_runs: 10
+    parameters:
+      payload: int[]
+    then:
+      - wait_until:
+          condition:
+            lambda: return id(laifen_client).connected();
+          timeout: 20s
+      - if:
+          condition:
+            lambda: return id(laifen_client).connected();
+          then:
+            - ble_client.ble_write:
+                id: laifen_client
+                service_uuid: ${laifen_service_uuid}
+                characteristic_uuid: ${laifen_control_char_uuid}
+                value: !lambda |-
+                  std::vector<uint8_t> data;
+                  data.reserve(payload.size());
+                  for (const int byte : payload) {
+                    data.push_back(static_cast<uint8_t>(byte));
+                  }
+                  return data;
+
+  - id: laifen_init
+    mode: restart
+    then:
+      - lambda: id(laifen_accept_commands) = false;
+      - wait_until:
+          condition:
+            lambda: return id(laifen_client).connected();
+          timeout: 20s
+      - if:
+          condition:
+            lambda: return id(laifen_client).connected();
+          then:
+            - logger.log: "Laifen init sequence"
+            - script.execute:
+                id: laifen_raw_write
+                payload: [0xAA, 0x41, 0x03, 0x00, 0x00, 0x00, 0xE8]
+            - delay: 250ms
+            - script.execute:
+                id: laifen_raw_write
+                payload: [0xAA, 0x41, 0x04, 0x00, 0x00, 0x00, 0xEF]
+            - delay: 250ms
+            - script.execute:
+                id: laifen_raw_write
+                payload: [0xAA, 0x41, 0x09, 0x00, 0x00, 0x00, 0xE2]
+            - delay: 250ms
+            - script.execute:
+                id: laifen_raw_write
+                payload: [0xAA, 0x01, 0x05, 0x00, 0x00, 0x07, 0x07, 0xEA, 0x05, 0x18, 0x01, 0x24, 0x2F, 0x53]
+            - delay: 500ms
+            - lambda: id(laifen_accept_commands) = true;
+            - logger.log: "Laifen init complete"
+          else:
+            - logger.log:
+                level: WARN
+                format: "Laifen init skipped, BLE not connected"
+
+  - id: laifen_send
+    mode: queued
+    max_runs: 20
+    parameters:
+      command: int
+      value: int
+    then:
+      - wait_until:
+          condition:
+            lambda: return id(laifen_client).connected();
+          timeout: 20s
+      - if:
+          condition:
+            lambda: return id(laifen_client).connected() && id(laifen_accept_commands);
+          then:
+            - logger.log:
+                format: "Laifen TX command=0x%02x value=%d"
+                args: ["command", "value"]
+            - ble_client.ble_write:
+                id: laifen_client
+                service_uuid: ${laifen_service_uuid}
+                characteristic_uuid: ${laifen_control_char_uuid}
+                value: !lambda |-
+                  const uint8_t cmd = static_cast<uint8_t>(command);
+                  const uint8_t val = static_cast<uint8_t>(clamp(value, 0, 100));
+                  std::vector<uint8_t> data = {
+                    0xAA, 0x03, cmd, 0x00, 0x00, 0x01, val
+                  };
+                  uint8_t checksum = 0;
+                  for (const uint8_t byte : data) {
+                    checksum ^= byte;
+                  }
+                  data.push_back(checksum);
+                  return data;
+          else:
+            - logger.log:
+                level: WARN
+                format: "Laifen TX skipped, BLE not ready: command=0x%02x value=%d"
+                args: ["command", "value"]
+
+  - id: laifen_send_combined_state
+    mode: queued
+    max_runs: 10
+    parameters:
+      kelvin: int
+    then:
+      - wait_until:
+          condition:
+            lambda: return id(laifen_client).connected();
+          timeout: 20s
+      - if:
+          condition:
+            lambda: return id(laifen_client).connected() && id(laifen_accept_commands);
+          then:
+            - logger.log:
+                format: "Laifen TX combined color_temperature=%dK"
+                args: ["kelvin"]
+            - ble_client.ble_write:
+                id: laifen_client
+                service_uuid: ${laifen_service_uuid}
+                characteristic_uuid: ${laifen_control_char_uuid}
+                value: !lambda |-
+                  const uint16_t temp = static_cast<uint16_t>(clamp(kelvin, 2700, 6500));
+                  const uint8_t upper_on = id(laifen_upper_light).state ? 1 : 0;
+                  const uint8_t lower_on = id(laifen_lower_light).state ? 1 : 0;
+                  const uint8_t upper_brightness =
+                      static_cast<uint8_t>(clamp(static_cast<int>(id(laifen_upper_brightness).state), 1, 100));
+                  const uint8_t lower_brightness =
+                      static_cast<uint8_t>(clamp(static_cast<int>(id(laifen_lower_brightness).state), 1, 100));
+                  std::vector<uint8_t> data = {
+                    0xAA, 0x03, 0x06, 0x00, 0x00, 0x07, 0x00,
+                    upper_on,
+                    upper_brightness,
+                    lower_on,
+                    lower_brightness,
+                    static_cast<uint8_t>((temp >> 8) & 0xFF),
+                    static_cast<uint8_t>(temp & 0xFF),
+                  };
+                  uint8_t checksum = 0;
+                  for (const uint8_t byte : data) {
+                    checksum ^= byte;
+                  }
+                  data.push_back(checksum);
+                  return data;
+          else:
+            - logger.log:
+                level: WARN
+                format: "Laifen combined TX skipped, BLE not ready: color_temperature=%dK"
+                args: ["kelvin"]
+
+switch:
+  - platform: template
+    name: "Laifen Master Light"
+    id: laifen_master_light
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    turn_on_action:
+      - script.execute:
+          id: laifen_raw_write
+          payload: [0xAA, 0x01, 0x08, 0x00, 0x00, 0x01, 0x01, 0xA3]
+      - lambda: |-
+          id(laifen_upper_light).publish_state(true);
+          id(laifen_lower_light).publish_state(true);
+    turn_off_action:
+      - script.execute:
+          id: laifen_raw_write
+          payload: [0xAA, 0x01, 0x08, 0x00, 0x00, 0x01, 0x00, 0xA2]
+      - lambda: |-
+          id(laifen_upper_light).publish_state(false);
+          id(laifen_lower_light).publish_state(false);
+
+  - platform: template
+    name: "Laifen Upper Light"
+    id: laifen_upper_light
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    turn_on_action:
+      - script.execute:
+          id: laifen_send
+          command: 0x01
+          value: 1
+    turn_off_action:
+      - script.execute:
+          id: laifen_send
+          command: 0x01
+          value: 0
+
+  - platform: template
+    name: "Laifen Lower Light"
+    id: laifen_lower_light
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    turn_on_action:
+      - script.execute:
+          id: laifen_send
+          command: 0x03
+          value: 1
+    turn_off_action:
+      - script.execute:
+          id: laifen_send
+          command: 0x03
+          value: 0
+
+number:
+  - platform: template
+    name: "Laifen Upper Brightness"
+    id: laifen_upper_brightness
+    min_value: 1
+    max_value: 100
+    step: 1
+    optimistic: true
+    restore_value: true
+    initial_value: 100
+    set_action:
+      - script.execute:
+          id: laifen_send
+          command: 0x02
+          value: !lambda return static_cast<int>(x);
+
+  - platform: template
+    name: "Laifen Lower Brightness"
+    id: laifen_lower_brightness
+    min_value: 1
+    max_value: 100
+    step: 1
+    optimistic: true
+    restore_value: true
+    initial_value: 100
+    set_action:
+      - script.execute:
+          id: laifen_send
+          command: 0x04
+          value: !lambda return static_cast<int>(x);
+
+  - platform: template
+    name: "Laifen Color Temperature"
+    id: laifen_color_temperature
+    min_value: 2700
+    max_value: 6500
+    step: 100
+    unit_of_measurement: K
+    optimistic: true
+    restore_value: true
+    initial_value: 4000
+    set_action:
+      - script.execute:
+          id: laifen_send_combined_state
+          kelvin: !lambda return static_cast<int>(x);
+
+button:
+  - platform: template
+    name: "Laifen Query Status"
+    on_press:
+      - script.execute: laifen_init
+
+  - platform: restart
+    name: "Laifen Restart"
