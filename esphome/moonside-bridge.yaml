@@ -9,21 +9,6 @@ esphome:
   name: ${device_name}
   friendly_name: ${friendly_name}
   comment: "BLE bridge for Moonside lamps using Nordic UART Service ASCII commands."
-  on_boot:
-    priority: -100
-    then:
-      - delay: 5s
-      - script.execute:
-          id: moonside_send
-          cmd: "LEDON"
-      - delay: 300ms
-      - script.execute:
-          id: moonside_send
-          cmd: "BRIGH080"
-      - delay: 300ms
-      - script.execute:
-          id: moonside_send
-          cmd: "COLOR255180050"
 
 esp32:
   board: wemos_d1_mini32
@@ -257,7 +242,7 @@ light:
     red: moonside_red_output
     green: moonside_green_output
     blue: moonside_blue_output
-    restore_mode: RESTORE_DEFAULT_ON
+    restore_mode: ALWAYS_OFF
 
 number:
   - platform: template

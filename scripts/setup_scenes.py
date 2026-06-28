@@ -161,7 +161,7 @@ print("=" * 60)
 
 time.sleep(2)
 
-ws_url = HA_URL.replace("https://", "wss://") + "/api/websocket"
+ws_url = HA_URL.replace("https://", "wss://").replace("http://", "ws://") + "/api/websocket"
 ws = websocket.create_connection(ws_url, sslopt={"cert_reqs": ssl.CERT_NONE})
 
 msg = json.loads(ws.recv())

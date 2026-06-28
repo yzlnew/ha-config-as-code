@@ -66,12 +66,15 @@ HA_TOKEN=your_long_lived_access_token
 HA_SSH_HOST=YOUR_HA_IP
 HA_SSH_USER=hassio
 HA_SSH_PASSWORD=your_password
+S1E_HOST=192.168.50.209
+S1E_TELNET_PORT=23
 ```
 
 说明：
 
 - `scripts/ha_api.py` 优先使用 `HA_EXTERNAL_URL`，否则回退 `HA_URL`
 - `setup_weather_forecast.py` 依赖 SSH 变量写入 HA 配置文件
+- `setup_s1e_panel.py` 通过 S1E telnet 配置面板开关/按键，并修补 S1E2HA 的开关状态回报
 
 ## 依赖
 

@@ -4,7 +4,9 @@
 import time
 import json
 import os
+import re
 import ssl
+import sys
 from urllib.parse import urlparse
 
 import websocket
@@ -40,6 +42,12 @@ def ws_call(message_type):
 
 def existing_light_groups():
     """Return existing light group entity registry entries by original name."""
+    grouped = light_group_entries_by_name()
+    return {name: canonical_light_group(entries) for name, entries in grouped.items()}
+
+
+def light_group_entries_by_name():
+    """Return all existing light group entity registry entries grouped by original name."""
     entries = ws_call("config/entity_registry/list")
     result = {}
     for entry in entries:
@@ -51,11 +59,44 @@ def existing_light_groups():
         name = entry.get("original_name") or entry.get("name")
         if not name:
             continue
-
-        current = result.get(name)
-        if current is None or entry.get("created_at", 0) < current.get("created_at", 0):
-            result[name] = entry
+        result.setdefault(name, []).append(entry)
     return result
+
+
+def canonical_light_group(entries):
+    """Prefer the no-suffix entity_id; otherwise keep the oldest registry entry."""
+    def sort_key(entry):
+        entity_id = entry.get("entity_id", "")
+        has_suffix = bool(re.search(r"_\d+$", entity_id))
+        return (has_suffix, entry.get("created_at") or "")
+
+    return sorted(entries, key=sort_key)[0]
+
+
+def cleanup_duplicate_light_groups(selected_names):
+    """Delete duplicate light group helpers, keeping the canonical entry for each name."""
+    grouped = light_group_entries_by_name()
+    deleted = 0
+    for name, entries in sorted(grouped.items()):
+        if name not in selected_names or len(entries) <= 1:
+            continue
+        keep = canonical_light_group(entries)
+        print(f"  [KEEP] {name}: {keep.get('entity_id')}")
+        for entry in sorted(entries, key=lambda e: e.get("entity_id", "")):
+            if entry is keep:
+                continue
+            entry_id = entry.get("config_entry_id")
+            if not entry_id:
+                print(f"  [SKIP] {entry.get('entity_id')} has no config_entry_id")
+                continue
+            try:
+                api("DELETE", f"/api/config/config_entries/entry/{entry_id}")
+                deleted += 1
+                print(f"  [DEL] {entry.get('entity_id')}")
+                time.sleep(0.2)
+            except Exception as exc:
+                print(f"  [FAIL] delete {entry.get('entity_id')}: {exc}")
+    return deleted
 
 
 def update_light_group(entry_id, name, entities):
@@ -248,8 +289,14 @@ def selected_groups():
 
 
 def main():
-    existing = existing_light_groups()
     selected = selected_groups()
+
+    if "--cleanup-duplicates" in sys.argv:
+        print("Cleaning duplicate light groups...")
+        deleted = cleanup_duplicate_light_groups(set(selected))
+        print(f"Deleted {deleted} duplicate light group helpers\n")
+
+    existing = existing_light_groups()
 
     print("Syncing light groups...")
     synced = {}

@@ -1,5 +1,6 @@
 .env
 .venv/
+esphome/secrets.yaml
 __pycache__/
 *.pyc
 .DS_Store
@@ -17,3 +18,6 @@ www/the-daily/data.json
 *.synctex.gz
 docs/*.pdf
 docs/architecture*.png
+
+# Generated e-ink frames (rendered/deployed, not source)
+scripts/eink/out/

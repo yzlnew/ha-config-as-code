@@ -35,6 +35,11 @@ def section(title, cards, columns=None):
     return s
 
 
+def grid_card(card, grid_columns):
+    card.setdefault("layout_options", {})["grid_columns"] = grid_columns
+    return card
+
+
 # ============================================================
 # Theme System — 修改 ACTIVE_THEME 切换主题
 # ============================================================
@@ -529,6 +534,19 @@ def mushroom_fan(entity, name=None):
     return card
 
 
+def mushroom_vacuum(entity, name=None):
+    card = {
+        "type": "custom:mushroom-vacuum-card",
+        "entity": entity,
+        "commands": ["start_pause", "stop", "return_home"],
+        "icon_animation": True,
+        "card_mod": {"style": MD3_STYLE},
+    }
+    if name:
+        card["name"] = name
+    return card
+
+
 def mushroom_chips(chips):
     return {
         "type": "custom:mushroom-chips-card",
@@ -811,6 +829,133 @@ _co2 = "sensor.xiaomi_cn_2008215373_ua3a_co2_density_p_3_8"
 _claude_5h_usage = "sensor.claude_code_5h_yong_liang"
 _claude_7d_usage = "sensor.claude_code_7d_yong_liang"
 _claude_extra_usage = "sensor.claude_code_e_wai_yong_liang"
+_matter_offline_count = "sensor.matter_light_offline_count"
+_matter_recovery_pending = "input_boolean.matter_recovery_pending"
+_matter_recovery_scheduled_at = "input_datetime.matter_recovery_scheduled_at"
+
+_MATTER_LIGHT_KEYWORDS = [
+    "intelligent_drive_power_supply",
+    "intelligent_power",
+    "magical_homes_color_light",
+    "moes_matter_light",
+]
+
+_MATTER_LIGHTS_JS = (
+    " const keywords = " + json.dumps(_MATTER_LIGHT_KEYWORDS) + ";"
+    " const isMatterLight = (entityId) => entityId.startsWith('light.') && keywords.some((key) => entityId.includes(key));"
+    " const lights = Object.keys(states)"
+    "   .filter(isMatterLight)"
+    "   .map((entityId) => { const item = states[entityId] || {}; return {entity_id: entityId, state: item.state, attributes: item.attributes || {}}; })"
+    "   .sort((a, b) => (a.attributes.friendly_name || a.entity_id).localeCompare(b.attributes.friendly_name || b.entity_id, 'zh-Hans-CN'));"
+    " const offline = lights.filter((item) => ['unavailable', 'unknown'].includes(item.state));"
+)
+
+_MATTER_STATUS_JS = (
+    _MATTER_LIGHTS_JS
+    + " const countSensor = states['" + _matter_offline_count + "'];"
+      " const sensorValue = Number(countSensor?.state);"
+      " const sensorTotal = Number(countSensor?.attributes?.total);"
+      " const hasSensor = countSensor && !['unknown', 'unavailable', 'none', ''].includes(countSensor.state) && Number.isFinite(sensorValue);"
+      " const offlineCount = hasSensor ? sensorValue : offline.length;"
+      " const totalCount = Number.isFinite(sensorTotal) && sensorTotal > 0 ? sensorTotal : lights.length;"
+      " const onlineCount = Math.max(0, totalCount - offlineCount);"
+      " const pending = states['" + _matter_recovery_pending + "']?.state === 'on';"
+      " const scheduledRaw = states['" + _matter_recovery_scheduled_at + "']?.state || '';"
+      " let scheduledText = '';"
+      " if (scheduledRaw && !['unknown', 'unavailable'].includes(scheduledRaw)) {"
+      "   const d = new Date(scheduledRaw.replace(' ', 'T'));"
+      "   scheduledText = Number.isNaN(d.getTime()) ? scheduledRaw : `${String(d.getMonth() + 1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;"
+      " }"
+)
+
+
+def matter_lights_status_card():
+    """Dashboard card: Matter light availability status."""
+    return {
+        "type": "custom:button-card",
+        "entity": _matter_offline_count,
+        "triggers_update": "all",
+        "show_icon": False,
+        "show_name": False,
+        "show_state": False,
+        "tap_action": {
+            "action": "call-service",
+            "service": "script.turn_on",
+            "target": {"entity_id": "script.matter_recovery_flow"},
+            "confirmation": {
+                "text": "将重启路由器网络服务并重启 Matter Server，期间网络和 Matter 设备会短暂离线。确定执行吗？",
+            },
+        },
+        "hold_action": {"action": "navigate", "navigation_path": "/lighting"},
+        "custom_fields": {
+            "icon_area": (
+                "[[["
+                + _MATTER_STATUS_JS
+                + " const color = offlineCount > 0 ? 'var(--error-color)' : 'var(--primary-color)';"
+                  " const bg = offlineCount > 0 ? 'rgba(186, 26, 26, 0.12)' : 'var(--secondary-background-color)';"
+                  " return `<div style=\"width:56px;height:56px;border-radius:18px;background:${bg};display:flex;align-items:center;justify-content:center\"><ha-icon icon='mdi:lightbulb-alert' style='--mdc-icon-size:30px;color:${color}'></ha-icon></div>`;"
+                  " ]]]"
+            ),
+            "title_area": (
+                "[[["
+                + _MATTER_STATUS_JS
+                + " const secondary = pending && scheduledText ? `已预约 ${scheduledText}` : `${onlineCount} 盏在线`;"
+                  " return `<div><div style=\"font-size:16px;font-weight:700;color:var(--primary-text-color)\">Matter 灯失联</div><div style=\"margin-top:4px;font-size:12px;color:var(--secondary-text-color)\">${secondary}</div></div>`;"
+                  " ]]]"
+            ),
+            "badge_area": (
+                "[[["
+                + _MATTER_STATUS_JS
+                + " const bad = offlineCount > 0;"
+                  " const fg = bad ? 'var(--error-color)' : 'var(--primary-color)';"
+                  " const bg = bad ? 'rgba(186, 26, 26, 0.12)' : 'var(--secondary-background-color)';"
+                  " const label = pending ? '已预约' : (bad ? '恢复' : '正常');"
+                  " return `<div style=\"padding:6px 10px;border-radius:999px;background:${bg};font-size:12px;font-weight:700;color:${fg}\">${label}</div>`;"
+                  " ]]]"
+            ),
+            "count_area": (
+                "[[["
+                + _MATTER_STATUS_JS
+                + " const color = offlineCount > 0 ? 'var(--error-color)' : 'var(--primary-color)';"
+                  " return `<div style=\"display:flex;align-items:baseline;gap:4px;white-space:nowrap\"><span style=\"font-size:34px;line-height:1;font-weight:800;color:${color}\">${offlineCount}</span><span style=\"font-size:14px;font-weight:700;color:var(--secondary-text-color)\">/ ${totalCount}</span></div>`;"
+                  " ]]]"
+            ),
+            "detail_area": (
+                "[[["
+                + _MATTER_STATUS_JS
+                + " if (totalCount === 0) return `<div style=\"font-size:13px;color:var(--secondary-text-color);white-space:nowrap;overflow:hidden;text-overflow:ellipsis\">未找到 Matter 灯</div>`;"
+                  " if (offlineCount === 0) return `<div style=\"font-size:13px;color:var(--secondary-text-color);white-space:nowrap;overflow:hidden;text-overflow:ellipsis\">全部在线</div>`;"
+                  " const names = offline.slice(0, 4).map((item) => item.attributes.friendly_name || item.entity_id.replace('light.', '')).join('、');"
+                  " const suffix = offlineCount > 4 ? ` 等 ${offlineCount} 盏` : '';"
+                  " return `<div style=\"font-size:13px;color:var(--secondary-text-color);white-space:nowrap;overflow:hidden;text-overflow:ellipsis\">${names}${suffix}</div>`;"
+                  " ]]]"
+            ),
+        },
+        "styles": {
+            "grid": [
+                {"grid-template-areas": "'icon_area title_area badge_area' 'count_area detail_area detail_area'"},
+                {"grid-template-columns": "56px minmax(0, 1fr) auto"},
+                {"gap": "14px"},
+                {"align-items": "center"},
+            ],
+            "card": [
+                {"padding": "18px"},
+                {"border-radius": "var(--ha-card-border-radius, 28px)"},
+                {"background": "var(--ha-card-background)"},
+                {"box-shadow": "none !important"},
+                {"border": "none !important"},
+            ],
+            "custom_fields": {
+                "icon_area": [{"grid-area": "icon_area"}],
+                "title_area": [{"grid-area": "title_area"}],
+                "badge_area": [{"grid-area": "badge_area"}, {"justify-self": "end"}],
+                "count_area": [{"grid-area": "count_area"}, {"align-self": "end"}],
+                "detail_area": [{"grid-area": "detail_area"}, {"min-width": "0"}],
+            },
+        },
+        "layout_options": {"grid_columns": 4},
+        "card_mod": {"style": MD3_STYLE},
+    }
 
 # Climate entities
 _living_ac = "climate.lemesh_cn_2000792394_air02"
@@ -918,6 +1063,8 @@ home_view = {
                 },
             ]),
 
+            matter_lights_status_card(),
+
             claude_usage_card(),
 
             # Temperature & Humidity Graph
@@ -994,7 +1141,7 @@ home_view = {
             mushroom_template(
                 "重启", "mdi:restart", "red",
                 primary="重启 HA",
-                secondary="{{ relative_time(states.sensor.last_boot.last_changed) }}前启动",
+                secondary="{{ relative_time(states('sensor.uptime') | as_datetime) + '前启动' if states('sensor.uptime') not in ['unknown', 'unavailable', ''] else '启动时间未知' }}",
                 tap_action={
                     "action": "call-service",
                     "service": "homeassistant.restart",
@@ -1075,6 +1222,7 @@ lighting_view = {
                             "| list | count }} 盏",
                 "card_mod": {"style": MD3_STYLE},
             },
+            matter_lights_status_card(),
             mushroom_light("light.suo_you_deng_guang", "所有灯光", "mdi:home-lightbulb", is_group=True),
             mushroom_light("light.quan_wu_zhu_deng_dai", "全屋主灯带 (Matter)", "mdi:led-strip-variant", is_group=True),
             mushroom_light("light.quan_wu_fen_wei_deng_dai", "全屋氛围灯带", "mdi:led-strip-variant", is_group=True),
@@ -1095,6 +1243,10 @@ lighting_view = {
             mushroom_light("light.intelligent_drive_power_supply_16", "泛光灯", "mdi:ceiling-light"),
             mushroom_light("light.intelligent_drive_power_supply_17", "格栅灯", "mdi:light-recessed"),
             mushroom_light("light.lemesh_cn_2023148762_wy0d02_s_2_light", "背景墙灯带", "mdi:led-strip"),
+            mushroom_light("light.magical_homes_color_light_3", "背景灯带", "mdi:led-strip-variant"),
+            mushroom_light("light.magical_homes_color_light_4", "背景区灯带", "mdi:led-strip-variant"),
+            mushroom_light("light.magical_homes_color_light_5", "主灯带", "mdi:led-strip-variant"),
+            mushroom_light("light.magical_homes_color_light_6", "电视区灯带", "mdi:led-strip-variant"),
             mushroom_light("light.wlg_cn_949473222_wy0a06_s_2_light", "背景墙射灯 1", "mdi:spotlight-beam"),
             mushroom_light("light.wlg_cn_949429122_wy0a06_s_2_light", "背景墙射灯 2", "mdi:spotlight-beam"),
             mushroom_light("light.gdds_cn_2080299638_wy0a02_s_2_light", "节律筒射灯", "mdi:track-light"),
@@ -1102,6 +1254,8 @@ lighting_view = {
             mushroom_light("light.wlg_cn_949442390_wy0a06_s_2_light", "筒射灯 2", "mdi:track-light"),
             mushroom_light("light.090615_cn_2000236373_milg05_s_2_light", "射灯 1", "mdi:spotlight-beam"),
             mushroom_light("light.090615_cn_2000254702_milg05_s_2_light", "射灯 2", "mdi:spotlight-beam"),
+            mushroom_light("light.trytogo", "Trytogo", "mdi:lightbulb-group"),
+            mushroom_light("light.yeelight_cubematrix_0xc04e30f74108", "Cube Matrix", "mdi:view-grid"),
         ]),
         # --- 西厨 ---
         section("🍳 西厨", [
@@ -1134,12 +1288,13 @@ lighting_view = {
             mushroom_light("light.lemesh_cn_2020771536_wy0d02_s_2_light", "床头灯带", "mdi:led-strip"),
             mushroom_light("light.lemesh_cn_2020803689_wy0d02_s_2_light", "入口灯带", "mdi:led-strip"),
             mushroom_light("light.linp_cn_949882702_ld6bcw_s_2_light", "存在筒射灯", "mdi:motion-sensor"),
-            mushroom_light("light.zhimi_cn_873345887_pa6_s_4_night_light", "马桶夜灯", "mdi:toilet"),
+            mushroom_light("light.yeelink_cn_125156913_lamp4_s_2_light", "台灯", "mdi:desk-lamp"),
         ]),
         # --- 主卫 ---
         section("🚿 主卫", [
             mushroom_light("light.zhu_wei_deng_guang", "主卫灯光组", "mdi:shower-head", is_group=True),
             mushroom_light("light.xiaomi_cn_921633051_na2_s_2_light", "浴霸灯", "mdi:heat-wave"),
+            mushroom_light("light.zhimi_cn_873345887_pa6_s_4_night_light", "马桶夜灯", "mdi:toilet"),
             mushroom_light("light.linp_cn_950194815_ld6bcw_s_2_light", "存在筒射灯", "mdi:motion-sensor"),
             mushroom_light("light.090615_cn_2000228017_milg05_s_2_light", "射灯 1", "mdi:spotlight-beam"),
             mushroom_light("light.090615_cn_2000257106_milg05_s_2_light", "射灯 2", "mdi:spotlight-beam"),
@@ -1172,6 +1327,27 @@ lighting_view = {
             mushroom_light("light.intelligent_drive_power_supply_10", "射灯 4", "mdi:spotlight-beam"),
             mushroom_light("light.magical_homes_color_light_2", "书房灯带", "mdi:led-strip-variant"),
             mushroom_light("light.lemesh_cn_2000705436_wy0d02_s_2_light", "书房氛围灯带", "mdi:led-strip"),
+            mushroom_light("light.esp32_d1_mini_moonside_moonside_lamp", "Moonside", "mdi:lamp"),
+            mushroom_select(
+                "select.esp32_d1_mini_moonside_moonside_color_preset",
+                "Moonside 预设",
+                "mdi:palette",
+                "purple",
+                style=MD3_SELECT_STYLE,
+            ),
+            mushroom_select(
+                "select.esp32_d1_mini_moonside_moonside_dynamic_effect",
+                "Moonside 效果",
+                "mdi:gradient-horizontal",
+                "purple",
+                style=MD3_SELECT_STYLE,
+            ),
+            tile_toggle("switch.esp32_d1_mini_laifen_bridge_laifen_master_light", "Laifen 主灯", "mdi:desk-lamp"),
+            tile_toggle("switch.esp32_d1_mini_laifen_bridge_laifen_upper_light", "Laifen 上灯", "mdi:lamp"),
+            tile_toggle("switch.esp32_d1_mini_laifen_bridge_laifen_lower_light", "Laifen 下灯", "mdi:lamp-outline"),
+            mushroom_entity("number.esp32_d1_mini_laifen_bridge_laifen_upper_brightness", "Laifen 上灯亮度", "mdi:brightness-6", "amber"),
+            mushroom_entity("number.esp32_d1_mini_laifen_bridge_laifen_lower_brightness", "Laifen 下灯亮度", "mdi:brightness-4", "amber"),
+            mushroom_entity("number.esp32_d1_mini_laifen_bridge_laifen_color_temperature", "Laifen 色温", "mdi:thermometer", "orange"),
         ]),
         # --- 阳台 ---
         section("🌿 阳台", [
@@ -1397,6 +1573,10 @@ _dryer_done = "sensor.hong_gan_ji_completion_time"
 _dish_state = "sensor.xi_wan_ji_operation_state"
 _dish_progress = "sensor.xi_wan_ji_program_progress"
 _dish_done = "sensor.xi_wan_ji_program_finish_time"
+_dji_vacuum = "vacuum.robotic_vacuum_cleaner"
+_dji_vacuum_mode = "select.robotic_vacuum_cleaner_qing_sao_mo_shi"
+_dji_vacuum_status = "sensor.robotic_vacuum_cleaner_cao_zuo_zhuang_tai"
+_dji_vacuum_error = "sensor.robotic_vacuum_cleaner_cao_zuo_chu_cuo"
 
 _washer_jobs = ("{'wash':'洗涤','rinse':'漂洗','spin':'脱水','drying':'烘干',"
                 "'pre_wash':'预洗','air_wash':'空气洗','cooling':'冷却',"
@@ -1803,6 +1983,56 @@ laundry_view = {
     "icon": "mdi:washing-machine",
     "type": "sections",
     "sections": [
+        section("🤖 扫地机", [
+            grid_card(mushroom_vacuum(_dji_vacuum, "DJI 扫地机"), 4),
+            grid_card(mushroom_select(_dji_vacuum_mode, "清扫模式", "mdi:tune-variant", "blue"), 4),
+            grid_card(mushroom_entity(_dji_vacuum_status, "运行状态", "mdi:robot-vacuum", "green"), 2),
+            grid_card(mushroom_entity(_dji_vacuum_error, "异常状态", "mdi:alert-circle", "red"), 2),
+            md3_service_button(
+                "开始",
+                "mdi:play",
+                "vacuum.start",
+                data={"entity_id": _dji_vacuum},
+                min_height="52px",
+                font_size="14px",
+                padding="8px 14px",
+                radius="999px",
+                grid_columns=2,
+            ),
+            md3_service_button(
+                "暂停",
+                "mdi:pause",
+                "vacuum.pause",
+                data={"entity_id": _dji_vacuum},
+                min_height="52px",
+                font_size="14px",
+                padding="8px 14px",
+                radius="999px",
+                grid_columns=2,
+            ),
+            md3_service_button(
+                "回充",
+                "mdi:home-import-outline",
+                "vacuum.return_to_base",
+                data={"entity_id": _dji_vacuum},
+                min_height="52px",
+                font_size="14px",
+                padding="8px 14px",
+                radius="999px",
+                grid_columns=2,
+            ),
+            md3_service_button(
+                "停止",
+                "mdi:stop",
+                "vacuum.stop",
+                data={"entity_id": _dji_vacuum},
+                min_height="52px",
+                font_size="14px",
+                padding="8px 14px",
+                radius="999px",
+                grid_columns=2,
+            ),
+        ]),
         section("🫧 洗衣机", [{"type": "conditional", "conditions": [{"entity": _washer_state, "state_not": "unavailable"}, {"entity": _washer_state, "state_not": "inactive"}, {"entity": _washer_state, "state_not": "off"}], "card": washer_button_card()}, {"type": "conditional", "conditions": [{"condition": "or", "conditions": [{"entity": _washer_state, "state": "inactive"}, {"entity": _washer_state, "state": "off"}, {"entity": _washer_state, "state": "unavailable"}]}], "card": mushroom_template("洗衣机", "mdi:washing-machine", "disabled", primary="洗衣机", secondary="已关机")}], columns=1),
         section("🔥 烘干机", [{"type": "conditional", "conditions": [{"entity": _dryer_state, "state_not": "unavailable"}, {"entity": _dryer_state, "state_not": "inactive"}, {"entity": _dryer_state, "state_not": "off"}], "card": dryer_button_card()}, {"type": "conditional", "conditions": [{"condition": "or", "conditions": [{"entity": _dryer_state, "state": "inactive"}, {"entity": _dryer_state, "state": "off"}, {"entity": _dryer_state, "state": "unavailable"}]}], "card": mushroom_template("烘干机", "mdi:tumble-dryer", "disabled", primary="烘干机", secondary="已关机")}], columns=1),
         section("🍽️ 洗碗机综合面板", [{"type": "conditional", "conditions": [{"entity": _dish_state, "state_not": "unavailable"}, {"entity": _dish_state, "state_not": "inactive"}, {"entity": _dish_state, "state_not": "off"}], "card": dishwasher_button_card()}, {"type": "conditional", "conditions": [{"condition": "or", "conditions": [{"entity": _dish_state, "state": "inactive"}, {"entity": _dish_state, "state": "off"}, {"entity": _dish_state, "state": "unavailable"}]}], "card": mushroom_template("洗碗机", "mdi:dishwasher", "disabled", primary="洗碗机", secondary="已关机")}])

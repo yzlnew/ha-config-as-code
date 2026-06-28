@@ -7,31 +7,17 @@ import time
 from ha_api import api
 
 
-def create_instance(name, lights, options_override=None):
-    """Create an adaptive_lighting config entry and configure its options."""
-    # Step 1: Start config flow
-    result = api("POST", "/api/config/config_entries/flow",
-                 {"handler": "adaptive_lighting", "show_advanced_options": True})
-    flow_id = result["flow_id"]
+def adaptive_lighting_entries():
+    """Return existing Adaptive Lighting config entries keyed by title."""
+    entries = api("GET", "/api/config/config_entries/entry")
+    return {
+        entry["title"]: entry
+        for entry in entries
+        if entry.get("domain") == "adaptive_lighting"
+    }
 
-    # Step 2: Select "new"
-    result = api("POST", f"/api/config/config_entries/flow/{flow_id}",
-                 {"action": "new"})
-    flow_id = result["flow_id"]
 
-    # Step 3: Submit name
-    result = api("POST", f"/api/config/config_entries/flow/{flow_id}",
-                 {"name": name})
-    entry_id = result["result"]["entry_id"]
-    print(f"  Created entry: {entry_id}")
-
-    # Step 4: Start options flow
-    time.sleep(0.5)
-    result = api("POST", "/api/config/config_entries/options/flow",
-                 {"handler": entry_id, "show_advanced_options": True})
-    options_flow_id = result["flow_id"]
-
-    # Step 5: Submit options with lights
+def desired_options(lights, options_override=None):
     options = {
         "lights": lights,
         "interval": 120,
@@ -52,11 +38,58 @@ def create_instance(name, lights, options_override=None):
     }
     if options_override:
         options.update(options_override)
+    return options
+
+
+def configure_options(entry_id, lights, options_override=None):
+    """Configure an Adaptive Lighting config entry's options."""
+    result = api("POST", "/api/config/config_entries/options/flow",
+                 {"handler": entry_id, "show_advanced_options": True})
+    options_flow_id = result["flow_id"]
 
     result = api("POST",
                  f"/api/config/config_entries/options/flow/{options_flow_id}",
-                 options)
+                 desired_options(lights, options_override))
     print(f"  Options set: {result.get('type')}")
+    return result
+
+
+def create_instance(name, lights, options_override=None):
+    """Create an adaptive_lighting config entry and configure its options."""
+    existing = adaptive_lighting_entries().get(name)
+    if existing:
+        entry_id = existing["entry_id"]
+        print(f"  Existing entry: {entry_id}")
+        configure_options(entry_id, lights, options_override)
+        return entry_id
+
+    # Step 1: Start config flow
+    result = api("POST", "/api/config/config_entries/flow",
+                 {"handler": "adaptive_lighting", "show_advanced_options": True})
+    flow_id = result["flow_id"]
+
+    # Step 2: Select "new"
+    result = api("POST", f"/api/config/config_entries/flow/{flow_id}",
+                 {"action": "new"})
+    flow_id = result["flow_id"]
+
+    # Step 3: Submit name
+    result = api("POST", f"/api/config/config_entries/flow/{flow_id}",
+                 {"name": name})
+    entry_id = (result.get("result") or {}).get("entry_id")
+    if not entry_id:
+        # Current HA/Adaptive Lighting versions may create the entry without
+        # returning result.entry_id. Look it up by title before continuing.
+        time.sleep(0.5)
+        existing = adaptive_lighting_entries().get(name)
+        if not existing:
+            raise RuntimeError(f"entry created but not found: {json.dumps(result, ensure_ascii=False)}")
+        entry_id = existing["entry_id"]
+    print(f"  Created entry: {entry_id}")
+
+    # Step 4: Start options flow
+    time.sleep(0.5)
+    configure_options(entry_id, lights, options_override)
     return entry_id
 
 

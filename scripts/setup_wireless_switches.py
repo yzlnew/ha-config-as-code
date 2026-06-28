@@ -235,8 +235,8 @@ AREA_CURTAINS = {
 
 # Area → ventilation fan entity
 AREA_VENT = {
-    "主卫": "fan.xiaomi_cn_921633051_na2_s_3_fan",
-    "次卫": "fan.xiaomi_cn_921633179_na2_s_3_fan",
+    "主卫": "switch.xiaomi_cn_921633051_na2_ventilation_p_4_8",
+    "次卫": "switch.yeelink_cn_945433772_v11_ventilation_p_3_4",
 }
 
 # All lights for "full off" per area (main + strips + bath-specific)
@@ -372,7 +372,7 @@ def make_curtain_toggle_action(curtains):
 
 def make_vent_toggle_action(vent_entity):
     """Toggle ventilation fan."""
-    return [{"service": "fan.toggle", "target": {"entity_id": vent_entity}}]
+    return [{"service": "homeassistant.toggle", "target": {"entity_id": vent_entity}}]
 
 
 def make_full_off_action(area):
@@ -588,6 +588,37 @@ DISPLAY_BY_UNIQUE_ID = {
         "desired_entity_id": "automation.btn_study_left_longpress",
     },
 }
+
+DISPLAY_BY_UNIQUE_ID.update({
+    "s1e_switch_study_ac_control": {
+        "name": "S1E：开关1控制书房空调", "icon": "mdi:air-conditioner",
+        "desired_entity_id": "automation.s1e_switch_study_ac_control",
+    },
+    "s1e_switch_study_ac_sync": {
+        "name": "S1E：同步书房空调状态", "icon": "mdi:air-conditioner",
+        "desired_entity_id": "automation.s1e_switch_study_ac_sync",
+    },
+    "s1e_switch_fresh_air_control": {
+        "name": "S1E：开关2控制新风", "icon": "mdi:air-filter",
+        "desired_entity_id": "automation.s1e_switch_fresh_air_control",
+    },
+    "s1e_switch_fresh_air_sync": {
+        "name": "S1E：同步新风状态", "icon": "mdi:air-filter",
+        "desired_entity_id": "automation.s1e_switch_fresh_air_sync",
+    },
+    "s1e_switch_study_lamps_control": {
+        "name": "S1E：开关3控制书房氛围灯", "icon": "mdi:floor-lamp",
+        "desired_entity_id": "automation.s1e_switch_study_lamps_control",
+    },
+    "s1e_switch_study_lamps_sync": {
+        "name": "S1E：同步书房氛围灯状态", "icon": "mdi:floor-lamp",
+        "desired_entity_id": "automation.s1e_switch_study_lamps_sync",
+    },
+    "s1e_button_1_other_lights_off": {
+        "name": "S1E：按键1关闭其他区域灯光", "icon": "mdi:lightbulb-group-off",
+        "desired_entity_id": "automation.s1e_button_1_other_lights_off",
+    },
+})
 
 
 # ============================================================
@@ -953,6 +984,144 @@ add_auto("btn_study_left_longpress",
          "Study left long-press -> all lights off",
          triggers_for(st_switches, "left", "long_press"),
          make_full_off_action("书房"))
+
+# --- S1E 妙控屏 ---
+S1E_SWITCH_1 = "switch.s1e_54ef444fc2a8_kai_guan_1"
+S1E_SWITCH_2 = "switch.s1e_54ef444fc2a8_kai_guan_2"
+S1E_SWITCH_3 = "switch.s1e_54ef444fc2a8_kai_guan_3"
+S1E_BUTTON_1 = "sensor.s1e_54ef444fc2a8_an_jian_1"
+STUDY_AC = "climate.lemesh_cn_2000792347_air02"
+FRESH_AIR = "fan.tofan_cn_948856816_wk01_s_3_air_fresh"
+STUDY_AMBIENT_LAMPS = [
+    "switch.esp32_d1_mini_laifen_bridge_laifen_master_light",
+    "light.esp32_d1_mini_moonside_moonside_lamp",
+]
+
+
+def s1e_switch_trigger(entity_id):
+    return [{"platform": "state", "entity_id": entity_id, "from": "off", "to": "on"},
+            {"platform": "state", "entity_id": entity_id, "from": "on", "to": "off"}]
+
+
+def s1e_control_action(on_actions, off_actions):
+    return [{
+        "choose": [
+            {"conditions": [{"condition": "template", "value_template": "{{ trigger.to_state.state == 'on' }}"}],
+             "sequence": on_actions},
+            {"conditions": [{"condition": "template", "value_template": "{{ trigger.to_state.state == 'off' }}"}],
+             "sequence": off_actions},
+        ],
+    }]
+
+
+def s1e_sync_action(s1e_switch, on_template):
+    return [{
+        "choose": [
+            {"conditions": [{"condition": "template", "value_template": on_template}],
+             "sequence": [{"service": "switch.turn_on", "target": {"entity_id": s1e_switch}}]},
+        ],
+        "default": [{"service": "switch.turn_off", "target": {"entity_id": s1e_switch}}],
+    }]
+
+
+AUTOMATIONS.extend([
+    {
+        "id": "s1e_switch_study_ac_control",
+        "config": {
+            "alias": "S1E：开关1控制书房空调",
+            "description": "S1E 开关1开启/关闭书房空调",
+            "trigger": s1e_switch_trigger(S1E_SWITCH_1),
+            "condition": [],
+            "action": s1e_control_action(
+                [{"service": "climate.turn_on", "target": {"entity_id": STUDY_AC}}],
+                [{"service": "climate.turn_off", "target": {"entity_id": STUDY_AC}}],
+            ),
+            "mode": "single",
+        },
+    },
+    {
+        "id": "s1e_switch_study_ac_sync",
+        "config": {
+            "alias": "S1E：同步书房空调状态",
+            "description": "书房空调状态变化时同步 S1E 开关1",
+            "trigger": [{"platform": "state", "entity_id": STUDY_AC}],
+            "condition": [{"condition": "template", "value_template": "{{ trigger.to_state.state not in ['unknown', 'unavailable'] }}"}],
+            "action": s1e_sync_action(S1E_SWITCH_1, "{{ states('" + STUDY_AC + "') != 'off' }}"),
+            "mode": "single",
+        },
+    },
+    {
+        "id": "s1e_switch_fresh_air_control",
+        "config": {
+            "alias": "S1E：开关2控制新风",
+            "description": "S1E 开关2开启/关闭新风机",
+            "trigger": s1e_switch_trigger(S1E_SWITCH_2),
+            "condition": [],
+            "action": s1e_control_action(
+                [{"service": "fan.turn_on", "target": {"entity_id": FRESH_AIR}}],
+                [{"service": "fan.turn_off", "target": {"entity_id": FRESH_AIR}}],
+            ),
+            "mode": "single",
+        },
+    },
+    {
+        "id": "s1e_switch_fresh_air_sync",
+        "config": {
+            "alias": "S1E：同步新风状态",
+            "description": "新风机状态变化时同步 S1E 开关2",
+            "trigger": [{"platform": "state", "entity_id": FRESH_AIR}],
+            "condition": [{"condition": "template", "value_template": "{{ trigger.to_state.state in ['on', 'off'] }}"}],
+            "action": s1e_sync_action(S1E_SWITCH_2, "{{ is_state('" + FRESH_AIR + "', 'on') }}"),
+            "mode": "single",
+        },
+    },
+    {
+        "id": "s1e_switch_study_lamps_control",
+        "config": {
+            "alias": "S1E：开关3控制书房氛围灯",
+            "description": "S1E 开关3开启/关闭 Laifen 和 Moonside",
+            "trigger": s1e_switch_trigger(S1E_SWITCH_3),
+            "condition": [],
+            "action": s1e_control_action(
+                [{"service": "homeassistant.turn_on", "target": {"entity_id": STUDY_AMBIENT_LAMPS}}],
+                [{"service": "homeassistant.turn_off", "target": {"entity_id": STUDY_AMBIENT_LAMPS}}],
+            ),
+            "mode": "single",
+        },
+    },
+    {
+        "id": "s1e_switch_study_lamps_sync",
+        "config": {
+            "alias": "S1E：同步书房氛围灯状态",
+            "description": "Laifen 或 Moonside 状态变化时同步 S1E 开关3",
+            "trigger": [{"platform": "state", "entity_id": STUDY_AMBIENT_LAMPS}],
+            "condition": [{"condition": "template", "value_template": "{{ trigger.to_state.state in ['on', 'off'] }}"}],
+            "action": s1e_sync_action(
+                S1E_SWITCH_3,
+                "{{ is_state('" + STUDY_AMBIENT_LAMPS[0] + "', 'on') or is_state('" + STUDY_AMBIENT_LAMPS[1] + "', 'on') }}",
+            ),
+            "mode": "single",
+        },
+    },
+])
+
+non_study_lights = []
+for _area, _lights in AREA_ALL_LIGHTS.items():
+    if _area != "书房":
+        non_study_lights.extend(_lights)
+non_study_lights = list(dict.fromkeys(non_study_lights))
+
+AUTOMATIONS.append({
+    "id": "s1e_button_1_other_lights_off",
+    "config": {
+        "alias": "S1E：按键1关闭其他区域灯光",
+        "description": "S1E 按键1关闭除书房外其他区域灯光",
+        "trigger": [{"platform": "state", "entity_id": S1E_BUTTON_1}],
+        "condition": [{"condition": "template", "value_template": "{{ trigger.to_state.state not in ['unknown', 'unavailable', ''] }}"}],
+        "action": [{"service": "light.turn_off", "target": {"entity_id": non_study_lights}}],
+        "mode": "single",
+    },
+})
 
 
 # ============================================================

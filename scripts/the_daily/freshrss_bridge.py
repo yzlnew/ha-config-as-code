@@ -63,8 +63,13 @@ def _human_ago(when: datetime) -> str:
     return f"{sec // 86400}d"
 
 
-def fetch_top(limit: int = 6) -> tuple[list[dict], int]:
-    """Return (items, total_unread). items is dashboard-ready; on any failure: ([], 0)."""
+def fetch_top(limit: int = 6, pad: bool = False) -> tuple[list[dict], int]:
+    """Return (items, total_unread). items is dashboard-ready; on any failure: ([], 0).
+
+    pad=True tops the list up to `limit` with the most-recent remaining items when
+    the scorer accepted fewer than `limit` (for the e-ink dashboard, which wants the
+    column filled rather than the digest's strict relevance cut). Default off.
+    """
     try:
         sys.path.insert(0, str(WIKI_SCRIPTS))
         import update_freshrss as uf  # type: ignore
@@ -93,18 +98,28 @@ def fetch_top(limit: int = 6) -> tuple[list[dict], int]:
                 -p[0].published.timestamp(),
             )
         )
-        out: list[dict] = []
-        for it, _res in kept[:limit]:
-            out.append(
-                {
-                    "src": _src_label(it.source),
-                    "title": it.title,
-                    "small": uf.summary_snippet(it.summary_html, 110),
-                    "ago": _human_ago(it.published),
-                    "url": it.url,
-                }
-            )
+        def _row(it):
+            return {
+                "src": _src_label(it.source),
+                "title": it.title,
+                "small": uf.summary_snippet(it.summary_html, 110),
+                "ago": _human_ago(it.published),
+                "url": it.url,
+            }
+
+        out: list[dict] = [_row(it) for it, _res in kept[:limit]]
+        if pad and len(out) < limit:
+            have = {d["url"] for d in out}
+            for it in sorted(items, key=lambda i: -i.published.timestamp()):
+                if len(out) >= limit:
+                    break
+                if it.url in have:
+                    continue
+                out.append(_row(it))
+                have.add(it.url)
         return out, total
-    except Exception as exc:  # network, auth, missing env, missing module — degrade quietly
+    except BaseException as exc:  # network, auth, missing env, SystemExit from imported script — degrade quietly
+        if isinstance(exc, KeyboardInterrupt):
+            raise
         print(f"[freshrss] {type(exc).__name__}: {exc}", file=sys.stderr)
         return [], 0
