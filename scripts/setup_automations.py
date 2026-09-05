@@ -29,17 +29,29 @@ DEPRECATED_AUTOMATION_IDS = [
     "chu_jia_quan_guan_bi_xin_feng",
     "chu_jia_quan_kai_qi_xin_feng",
     "home_keep_fresh_air_on",
+    "curtain_master_bedroom_weekday_morning_half_open",
+    "curtain_living_room_sheer_close_after_arrive_home",
+    "curtain_living_room_sheer_follow_weather",
+    "curtain_living_room_cloth_follow_sun",
+    "curtain_bedrooms_sunset_and_weekday_morning",
 ]
 MATTER_OFFLINE_SENSOR = "sensor.matter_light_offline_count"
 MATTER_RECOVERY_PENDING = "input_boolean.matter_recovery_pending"
 MATTER_RECOVERY_SCHEDULED_AT = "input_datetime.matter_recovery_scheduled_at"
 WASHER_JOB_STATE = "sensor.xi_yi_ji_job_state"
 AIRER_LIGHT = "light.xiaomi_cn_967167649_lyj3xs_s_3_light"
+MASTER_BEDROOM_AC = "climate.lemesh_cn_2000792363_air02"
+MASTER_BEDROOM_SLEEP = "input_boolean.master_bedroom_sleep"
 AUTOMATION_DISPLAY_BY_UNIQUE_ID = {
     "tv_sofa_track_on": {
         "name": "影音联动：电视机开启时打开沙发轨道灯",
         "icon": "mdi:track-light",
         "desired_entity_id": "automation.tv_sofa_track_on",
+    },
+    "appletv_watchdog_reload": {
+        "name": "影音守护：Apple TV 集成卡死自动重载",
+        "icon": "mdi:apple",
+        "desired_entity_id": "automation.appletv_watchdog_reload",
     },
     "home_turn_fresh_air_on": {
         "name": "环境自动：回家开启新风",
@@ -50,6 +62,11 @@ AUTOMATION_DISPLAY_BY_UNIQUE_ID = {
         "name": "环境自动：开启空调关闭新风",
         "icon": "mdi:air-conditioner",
         "desired_entity_id": "automation.ac_turn_fresh_air_off",
+    },
+    "master_bedroom_sleep_curve": {
+        "name": "舒眠温控：主卧分段升温",
+        "icon": "mdi:sleep",
+        "desired_entity_id": "automation.master_bedroom_sleep_curve",
     },
     "daily_pokemon": {
         "name": "每日宝可梦：每天更新图鉴",
@@ -106,16 +123,6 @@ AUTOMATION_DISPLAY_BY_UNIQUE_ID = {
         "icon": "mdi:dishwasher",
         "desired_entity_id": "automation.laundry_dishwasher_done",
     },
-    "curtain_master_bedroom_weekday_morning_half_open": {
-        "name": "窗帘自动：工作日早上主卧开一半",
-        "icon": "mdi:curtains",
-        "desired_entity_id": "automation.curtain_master_bedroom_weekday_morning_half_open",
-    },
-    "curtain_living_room_sheer_close_after_arrive_home": {
-        "name": "窗帘自动：晚上到家关闭客厅纱帘",
-        "icon": "mdi:curtains-closed",
-        "desired_entity_id": "automation.curtain_living_room_sheer_close_after_arrive_home",
-    },
     "matter_recovery_schedule": {
         "name": "Matter 恢复：失联超过5盏预约",
         "icon": "mdi:calendar-clock",
@@ -135,6 +142,31 @@ AUTOMATION_DISPLAY_BY_UNIQUE_ID = {
         "name": "洗衣联动：洗衣完成打开晾衣架灯",
         "icon": "mdi:hanger",
         "desired_entity_id": "automation.laundry_washer_finished_airer_light_on",
+    },
+    "pet_toilet_vacuum_tv_area": {
+        "name": "宠物联动：猫如厕后单扫电视区",
+        "icon": "mdi:robot-vacuum",
+        "desired_entity_id": "automation.pet_toilet_vacuum_tv_area",
+    },
+    "vacuum_kitchen_motion_lighting_guard": {
+        "name": "清扫保护：扫地机工作关闭厨房人来亮灯",
+        "icon": "mdi:robot-vacuum-variant",
+        "desired_entity_id": "automation.vacuum_kitchen_motion_lighting_guard",
+    },
+    "presence_light_on_guest_room_entrance": {
+        "name": "人来灯开：次卧次卫门口",
+        "icon": "mdi:motion-sensor",
+        "desired_entity_id": "automation.presence_light_on_guest_room_entrance",
+    },
+    "presence_light_off_guest_room_entrance": {
+        "name": "人走灯灭：次卧次卫门口",
+        "icon": "mdi:motion-sensor-off",
+        "desired_entity_id": "automation.presence_light_off_guest_room_entrance",
+    },
+    "pet_fountain_filter_alert_reset": {
+        "name": "宠物联动：饮水机更换滤芯异常提醒并复位",
+        "icon": "mdi:filter-sync",
+        "desired_entity_id": "automation.pet_fountain_filter_alert_reset",
     },
     "s1e_button_2_toggle_ac": {
         "name": "S1E：无线键2切换空调",
@@ -174,6 +206,10 @@ ENTITY_DISPLAY_BY_ENTITY_ID = {
     MATTER_RECOVERY_SCHEDULED_AT: {
         "name": "Matter 恢复预约时间",
         "icon": "mdi:calendar-clock",
+    },
+    MASTER_BEDROOM_SLEEP: {
+        "name": "主卧舒眠",
+        "icon": "mdi:sleep",
     },
     "script.matter_recovery_flow": {
         "name": "Matter 恢复：重启网络与服务",
@@ -270,6 +306,131 @@ automations["ac_turn_fresh_air_off"] = {
     "mode": "single",
 }
 
+automations["master_bedroom_sleep_curve"] = {
+    "alias": "舒眠温控：主卧分段升温",
+    "description": "开启后主卧空调以低风制冷：先保持 26°C，3 小时后升至 27°C，5 小时后升至 28°C，7 小时后关闭。",
+    "trigger": [
+        {
+            "platform": "state",
+            "entity_id": MASTER_BEDROOM_SLEEP,
+            "from": "off",
+            "to": "on",
+            "id": "enabled",
+        },
+        {
+            "platform": "state",
+            "entity_id": MASTER_BEDROOM_SLEEP,
+            "from": "on",
+            "to": "off",
+            "id": "disabled",
+        },
+        {
+            "platform": "state",
+            "entity_id": MASTER_BEDROOM_AC,
+            "to": "off",
+            "id": "ac_left_cool",
+        },
+        {
+            "platform": "state",
+            "entity_id": MASTER_BEDROOM_AC,
+            "to": "heat",
+            "id": "ac_left_cool",
+        },
+        {
+            "platform": "state",
+            "entity_id": MASTER_BEDROOM_AC,
+            "to": "fan_only",
+            "id": "ac_left_cool",
+        },
+        {
+            "platform": "state",
+            "entity_id": MASTER_BEDROOM_AC,
+            "to": "dry",
+            "id": "ac_left_cool",
+        },
+        {
+            "platform": "state",
+            "entity_id": MASTER_BEDROOM_AC,
+            "to": "unavailable",
+            "id": "ac_left_cool",
+        },
+    ],
+    "condition": [],
+    "action": [{
+        "choose": [
+            {
+                "conditions": [{
+                    "condition": "trigger",
+                    "id": "enabled",
+                }],
+                "sequence": [
+                    {
+                        "service": "climate.set_hvac_mode",
+                        "target": {"entity_id": MASTER_BEDROOM_AC},
+                        "data": {"hvac_mode": "cool"},
+                    },
+                    {
+                        "service": "climate.set_temperature",
+                        "target": {"entity_id": MASTER_BEDROOM_AC},
+                        "data": {"temperature": 26},
+                    },
+                    {
+                        "service": "climate.set_fan_mode",
+                        "target": {"entity_id": MASTER_BEDROOM_AC},
+                        "data": {"fan_mode": "低风"},
+                    },
+                    {"delay": "03:00:00"},
+                    {"condition": "state", "entity_id": MASTER_BEDROOM_SLEEP, "state": "on"},
+                    {"condition": "state", "entity_id": MASTER_BEDROOM_AC, "state": "cool"},
+                    {
+                        "service": "climate.set_temperature",
+                        "target": {"entity_id": MASTER_BEDROOM_AC},
+                        "data": {"temperature": 27},
+                    },
+                    {"delay": "02:00:00"},
+                    {"condition": "state", "entity_id": MASTER_BEDROOM_SLEEP, "state": "on"},
+                    {"condition": "state", "entity_id": MASTER_BEDROOM_AC, "state": "cool"},
+                    {
+                        "service": "climate.set_temperature",
+                        "target": {"entity_id": MASTER_BEDROOM_AC},
+                        "data": {"temperature": 28},
+                    },
+                    {"delay": "02:00:00"},
+                    {"condition": "state", "entity_id": MASTER_BEDROOM_SLEEP, "state": "on"},
+                    {"condition": "state", "entity_id": MASTER_BEDROOM_AC, "state": "cool"},
+                    {
+                        "service": "homeassistant.turn_off",
+                        "target": {
+                            "entity_id": [
+                                MASTER_BEDROOM_AC,
+                                MASTER_BEDROOM_SLEEP,
+                            ],
+                        },
+                    },
+                ],
+            },
+            {
+                "conditions": [{
+                    "condition": "trigger",
+                    "id": "ac_left_cool",
+                }],
+                "sequence": [
+                    {
+                        "condition": "state",
+                        "entity_id": MASTER_BEDROOM_SLEEP,
+                        "state": "on",
+                    },
+                    {
+                        "service": "input_boolean.turn_off",
+                        "target": {"entity_id": MASTER_BEDROOM_SLEEP},
+                    },
+                ],
+            },
+        ],
+    }],
+    "mode": "restart",
+}
+
 # --- Group 3: Leave & Welcome Home ---
 # leave_home_guard is managed by create_leave_home_automation.py (input_boolean-based version)
 
@@ -292,39 +453,6 @@ automations["welcome_home_mode"] = {
         ]}},
     ],
     "mode": "single"
-}
-
-# --- Group 3a: Curtains ---
-automations["curtain_master_bedroom_weekday_morning_half_open"] = {
-    "alias": "窗帘自动：工作日早上主卧开一半",
-    "description": "周一到周五 8:30 将主卧窗帘开到 50%。",
-    "trigger": [{"platform": "time", "at": "08:30:00"}],
-    "condition": [
-        {"condition": "time", "weekday": ["mon", "tue", "wed", "thu", "fri"]},
-    ],
-    "action": [{
-        "service": "cover.set_cover_position",
-        "target": {"entity_id": "cover.bean_cn_1158897918_ct06_s_2_curtain"},
-        "data": {"position": 50},
-    }],
-    "mode": "single",
-}
-
-automations["curtain_living_room_sheer_close_after_arrive_home"] = {
-    "alias": "窗帘自动：晚上到家关闭客厅纱帘",
-    "description": "在家确认从离家变为在家，且时间为 17:00 到次日 02:00 时，关闭客厅纱帘。",
-    "trigger": [
-        {"platform": "state", "entity_id": "input_boolean.zai_jia_que_ren", "from": "off", "to": "on"},
-    ],
-    "condition": [
-        {"condition": "template", "value_template": "{{ now().hour >= 17 or now().hour < 2 }}"},
-        {"condition": "template", "value_template": "{{ states('cover.linp_cn_2079495198_ec1db_s_2_curtain') not in ['closed', 'unavailable', 'unknown'] }}"},
-    ],
-    "action": [{
-        "service": "cover.close_cover",
-        "target": {"entity_id": "cover.linp_cn_2079495198_ec1db_s_2_curtain"},
-    }],
-    "mode": "single",
 }
 
 # --- Group 3b: Toilet Exhaust Fan ---
@@ -434,6 +562,29 @@ automations["tv_sofa_track_on"] = {
     "alias": "影音联动：电视机开启时打开沙发轨道灯",
     "trigger": [{"platform": "state", "entity_id": "media_player.dian_shi_ji", "from": ["off", "idle", "standby"], "to": ["idle", "playing", "paused"]}],
     "action": [{"service": "light.turn_on", "target": {"entity_id": "light.ke_ting_sha_fa_gui_dao"}}],
+    "mode": "single",
+}
+
+# Watchdog: the apple_tv (pyatv) media_player can silently freeze — stuck in an
+# active state with no updates while its config entry still reads "loaded" — so the
+# TV-on triggers above never fire. Reload the integration on: unavailable ≥10m,
+# an active state stale ≥3h (the freeze signature), or a daily 05:00 fallback.
+automations["appletv_watchdog_reload"] = {
+    "alias": "影音守护：Apple TV 集成卡死自动重载",
+    "description": "media_player 卡死(活跃态长时间无更新)/不可用时自动重载 apple_tv 集成;每日05:00兜底重载",
+    "trigger": [
+        {"platform": "state", "entity_id": "media_player.dian_shi_ji", "to": "unavailable", "for": {"minutes": 10}, "id": "unavailable"},
+        {"platform": "template", "value_template": "{{ states('media_player.dian_shi_ji') in ['playing','paused','buffering'] and (now() - states.media_player.dian_shi_ji.last_updated).total_seconds() > 10800 }}", "id": "frozen"},
+        {"platform": "time", "at": "05:00:00", "id": "daily"},
+    ],
+    "condition": [
+        {"condition": "template", "value_template": "{{ this.attributes.last_triggered is none or (now() - this.attributes.last_triggered).total_seconds() > 1200 }}"},
+    ],
+    "action": [
+        {"service": "homeassistant.reload_config_entry", "target": {"entity_id": "media_player.dian_shi_ji"}},
+        {"if": [{"condition": "template", "value_template": "{{ trigger.id != 'daily' }}"}],
+         "then": [iphone_notify_action("影音守护", "Apple TV 集成异常({{ trigger.id }}),已自动重载。")]},
+    ],
     "mode": "single",
 }
 
@@ -583,6 +734,16 @@ PRESENCE_ROOMS = [
         ],
     },
     {
+        "id": "guest_room_entrance",
+        "name": "次卧次卫门口",
+        "sensor": "binary_sensor.linp_cn_949847136_ld6bcw_occupancy_status_p_5_1",
+        "lux": "sensor.linp_cn_949847136_ld6bcw_illumination_p_5_5",
+        "light": [
+            "light.linp_cn_949847136_ld6bcw_s_2_light",         # 人体存在筒射灯
+            "light.moes_matter_light",                           # 红色装饰灯
+        ],
+    },
+    {
         "id": "master_bedroom",
         "name": "主卧",
         "sensor": "binary_sensor.linp_cn_949882702_ld6bcw_occupancy_status_p_5_1",
@@ -659,7 +820,8 @@ automations["leave_home_guard"] = {
         {"service": "light.turn_off", "target": {"entity_id": [
             "light.ke_ting_deng_guang", "light.xi_chu_deng_guang", "light.chu_fang_deng_guang",
             "light.zhu_wo_deng_guang", "light.zhu_wei_deng_guang", "light.ci_wo_deng_guang",
-            "light.ci_wei_deng_guang", "light.shu_fang_deng_guang", "light.yang_tai_deng_guang",
+            "light.ci_wo_ci_wei_men_kou_deng_guang", "light.ci_wei_deng_guang",
+            "light.shu_fang_deng_guang", "light.yang_tai_deng_guang",
         ]}},
         {"service": "climate.turn_off", "target": {"entity_id": [
             "climate.lemesh_cn_2000792394_air02", "climate.lemesh_cn_2000792363_air02",
@@ -679,7 +841,7 @@ automations["leave_home_guard"] = {
 # --- Group 6b: Laundry ---
 automations["laundry_washer_finished_airer_light_on"] = {
     "alias": "洗衣联动：洗衣完成打开晾衣架灯",
-    "description": "洗衣机作业状态进入完成后，自动打开晾衣架灯。",
+    "description": "洗衣机作业状态进入完成后，以 20% 亮度自动打开晾衣架灯。",
     "trigger": [{
         "platform": "state",
         "entity_id": WASHER_JOB_STATE,
@@ -690,7 +852,11 @@ automations["laundry_washer_finished_airer_light_on"] = {
         {"condition": "state", "entity_id": AIRER_LIGHT, "state": "off"},
     ],
     "action": [
-        {"service": "light.turn_on", "target": {"entity_id": AIRER_LIGHT}},
+        {
+            "service": "light.turn_on",
+            "target": {"entity_id": AIRER_LIGHT},
+            "data": {"brightness_pct": 20},
+        },
     ],
     "mode": "single",
 }
@@ -699,9 +865,14 @@ automations["laundry_washer_finished_airer_light_on"] = {
 _pet_todo_list = "todo.shopping_list"
 _pet_drink_times = "sensor.yin_shui_ji_max_zhen_wu_xian_drink_times"
 _pet_drinking = "binary_sensor.yin_shui_ji_max_zhen_wu_xian_pet_drinking"
+_pet_fountain_filter_remaining = "sensor.yin_shui_ji_max_zhen_wu_xian_filter_remaining"
+_pet_fountain_replace_filter = "binary_sensor.yin_shui_ji_max_zhen_wu_xian_replace_filter"
+_pet_fountain_reset_filter = "button.yin_shui_ji_max_zhen_wu_xian_reset_filter"
 _pet_litter_occupied = "binary_sensor.zhi_neng_mao_ce_suo_max_toilet_occupied"
 _pet_sand_lack = "binary_sensor.zhi_neng_mao_ce_suo_max_sand_lack"
 _pet_wastebin_full = "binary_sensor.zhi_neng_mao_ce_suo_max_wastebin_filled"
+_pet_vacuum = "vacuum.robotic_vacuum_cleaner"
+_pet_vacuum_mode = "select.robotic_vacuum_cleaner_qing_sao_mo_shi"
 _feeder_feed_success = "event.mmgg_cn_467135245_inland_feedsuccess_e_4_1"
 _feeder_daily_counter = "counter.pet_feeder_daily_portions"
 
@@ -715,6 +886,132 @@ automations["petkit_cat_toilet_notify"] = {
         )
     ],
     "mode": "single",
+}
+
+automations["pet_fountain_filter_alert_reset"] = {
+    "alias": "宠物联动：饮水机更换滤芯异常提醒并复位",
+    "description": "饮水机持续报告需要更换滤芯时先通知，随后自动复位并检查异常是否消失。",
+    "trigger": [{
+        "platform": "state",
+        "entity_id": _pet_fountain_replace_filter,
+        "to": "on",
+        "for": {"minutes": 1},
+    }],
+    "action": [
+        iphone_notify_action(
+            "宠物饮水机需要更换滤芯",
+            "饮水机报告需要更换滤芯，当前剩余 {{ states('sensor.yin_shui_ji_max_zhen_wu_xian_filter_remaining') }}%。"
+            "请尽快更换；5 秒后将自动按一次复位按钮。",
+        ),
+        {"delay": "00:00:05"},
+        {
+            "choose": [{
+                "conditions": [{
+                    "condition": "template",
+                    "value_template": "{{ states('button.yin_shui_ji_max_zhen_wu_xian_reset_filter') != 'unavailable' }}",
+                }],
+                "sequence": [
+                    {
+                        "service": "button.press",
+                        "target": {"entity_id": _pet_fountain_reset_filter},
+                    },
+                    {"delay": "00:01:00"},
+                    {
+                        "if": [{
+                            "condition": "state",
+                            "entity_id": _pet_fountain_replace_filter,
+                            "state": "on",
+                        }],
+                        "then": [
+                            iphone_notify_action(
+                                "饮水机滤芯异常未恢复",
+                                "自动复位后异常仍未消失，请检查饮水机并手动处理。",
+                            ),
+                        ],
+                    },
+                ],
+            }],
+            "default": [
+                iphone_notify_action(
+                    "饮水机滤芯复位失败",
+                    "复位按钮当前不可用，请检查饮水机并手动复位。",
+                ),
+            ],
+        },
+    ],
+    "mode": "single",
+}
+
+automations["pet_toilet_vacuum_tv_area"] = {
+    "alias": "宠物联动：猫如厕后单扫电视区",
+    "description": "猫在 08:00–22:00 离开猫厕所 1 分钟后，等待扫地机空闲并以单扫模式清扫电视区一次；夜间不触发。",
+    "trigger": [{
+        "platform": "state",
+        "entity_id": _pet_litter_occupied,
+        "from": "on",
+        "to": "off",
+        "for": {"minutes": 1},
+    }],
+    "condition": [
+        {"condition": "state", "entity_id": _pet_litter_occupied, "state": "off"},
+        {"condition": "time", "after": "08:00:00", "before": "22:00:00"},
+    ],
+    "action": [
+        {
+            "wait_template": "{{ states('vacuum.robotic_vacuum_cleaner') in ['docked', 'idle'] }}",
+            "timeout": "02:00:00",
+            "continue_on_timeout": False,
+        },
+        {"condition": "time", "after": "08:00:00", "before": "22:00:00"},
+        {
+            "service": "select.select_option",
+            "target": {"entity_id": _pet_vacuum_mode},
+            "data": {"option": "Quick Vac"},
+        },
+        {
+            "service": "vacuum.clean_area",
+            "target": {"entity_id": _pet_vacuum},
+            "data": {"cleaning_area_id": ["dian_shi_qu"]},
+        },
+    ],
+    "mode": "queued",
+    "max": 3,
+}
+
+# 扫地机返回基站时，厨房的存在感应灯会干扰其定位；清扫及回充期间暂停该自动化。
+automations["vacuum_kitchen_motion_lighting_guard"] = {
+    "alias": "清扫保护：扫地机工作关闭厨房人来亮灯",
+    "description": "扫地机清扫或返回基站时关闭厨房人来亮灯；停靠或空闲后自动恢复。",
+    "trigger": [
+        {"platform": "state", "entity_id": _pet_vacuum},
+        {"platform": "homeassistant", "event": "start"},
+    ],
+    "action": [{
+        "choose": [
+            {
+                "conditions": [{
+                    "condition": "template",
+                    "value_template": "{{ states('vacuum.robotic_vacuum_cleaner') in ['cleaning', 'returning'] }}",
+                }],
+                "sequence": [{
+                    "service": "automation.turn_off",
+                    "target": {"entity_id": "automation.ren_lai_deng_kai_chu_fang"},
+                    "data": {"stop_actions": True},
+                }],
+            },
+            {
+                "conditions": [{
+                    "condition": "template",
+                    "value_template": "{{ states('vacuum.robotic_vacuum_cleaner') in ['docked', 'idle'] }}",
+                }],
+                "sequence": [{
+                    "service": "automation.turn_on",
+                    "target": {"entity_id": "automation.ren_lai_deng_kai_chu_fang"},
+                }],
+            },
+        ],
+    }],
+    "mode": "restart",
 }
 
 # 注：drink_times 计数器噪声很大（PetKit 云端定时上报，常常凭空 +1/+2），
@@ -1276,6 +1573,14 @@ if __name__ == "__main__":
     mid = ensure_input_boolean(ws, mid, "人来人走自动灯", "mdi:motion-sensor", existing_bool_names)
     mid = ensure_input_boolean(ws, mid, "在家确认", "mdi:home-account", existing_bool_names)
     mid = ensure_input_boolean(ws, mid, "访客模式", "mdi:account-group", existing_bool_names)
+    mid = ensure_input_boolean(
+        ws,
+        mid,
+        "master_bedroom_sleep",
+        "mdi:sleep",
+        existing_bool_names,
+        existing_entity_ids,
+    )
     mid = ensure_input_number(ws, mid, "Moonside Last Red", "mdi:palette", existing_number_names, 0, 255, 1, 255)
     mid = ensure_input_number(ws, mid, "Moonside Last Green", "mdi:palette", existing_number_names, 0, 255, 1, 180)
     mid = ensure_input_number(ws, mid, "Moonside Last Blue", "mdi:palette", existing_number_names, 0, 255, 1, 50)

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sync E-paper Firmware"
+  short_description: "Safely synchronize paired e-paper firmware repositories"
+  default_prompt: "Use $sync-epaper-firmware to synchronize the changed e-paper firmware across both repositories and validate both copies."

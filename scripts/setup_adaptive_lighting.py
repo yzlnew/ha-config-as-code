@@ -2,6 +2,7 @@
 """Create Adaptive Lighting instances for each area's spotlights/downlights."""
 
 import json
+import os
 import time
 
 from ha_api import api
@@ -140,7 +141,9 @@ AREAS = {
         "light.intelligent_drive_power_supply_5",            # 格栅灯
         "light.090615_cn_2000281237_milg05_s_2_light",       # 射灯 1
         "light.090615_cn_2000196741_milg05_s_2_light",       # 射灯 2
-        "light.linp_cn_949847136_ld6bcw_s_2_light",         # 存在筒射灯
+    ],
+    "次卧次卫门口": [
+        "light.linp_cn_949847136_ld6bcw_s_2_light",         # 人体存在筒射灯
     ],
     "次卫": [
         "light.linp_cn_949833026_ld6bcw_s_2_light",         # 存在筒射灯
@@ -164,18 +167,34 @@ AREAS = {
 # Skip areas that already have adaptive lighting configured
 SKIP = {"厨房"}  # already exists as switch.adaptive_lighting_chu_fang
 
-print("Setting up Adaptive Lighting for area spotlights...\n")
 
-for area_name, lights in AREAS.items():
-    if area_name in SKIP:
-        print(f"[{area_name}] Skipped (already configured)")
-        continue
+def selected_areas():
+    """Limit updates with HA_ADAPTIVE_LIGHTING_AREAS=次卧,次卧次卫门口."""
+    names = os.getenv("HA_ADAPTIVE_LIGHTING_AREAS")
+    if not names:
+        return AREAS
 
-    print(f"[{area_name}] {len(lights)} lights")
-    try:
-        create_instance(area_name, lights)
-        print(f"  Done!\n")
-    except Exception as e:
-        print(f"  Error: {e}\n")
+    wanted = {name.strip() for name in names.split(",") if name.strip()}
+    return {name: lights for name, lights in AREAS.items() if name in wanted}
 
-print("All done!")
+
+def main():
+    print("Setting up Adaptive Lighting for area spotlights...\n")
+
+    for area_name, lights in selected_areas().items():
+        if area_name in SKIP:
+            print(f"[{area_name}] Skipped (already configured)")
+            continue
+
+        print(f"[{area_name}] {len(lights)} lights")
+        try:
+            create_instance(area_name, lights)
+            print("  Done!\n")
+        except Exception as e:
+            print(f"  Error: {e}\n")
+
+    print("All done!")
+
+
+if __name__ == "__main__":
+    main()

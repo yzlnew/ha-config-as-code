@@ -157,7 +157,7 @@ pip install requests websocket-client urllib3 python-dotenv
 - `scripts/setup_scenes.py`：创建会客/影音/睡眠场景，重载场景并设置中文显示名称
 - `scripts/setup_automations.py`：部署环境联动、安防、离家守护、宠物喂食、人来灯开等自动化，并补齐 input_boolean/counter helpers
 - `scripts/create_groups.py`：创建分区灯组与全屋灯带组
-- `scripts/setup_dashboard.py`：通过 WebSocket 覆盖写入 Lovelace 仪表盘
+- `scripts/setup_dashboard.py`：通过 WebSocket 覆盖写入 Lovelace 仪表盘，并幂等维护电子墨水屏 selector/刷新按钮
 - `scripts/setup_adaptive_lighting.py`：按区域创建 Adaptive Lighting 实例
 - `scripts/setup_homekit.py`：配置 HomeKit Bridge（排除 Matter 直连设备）
 - `scripts/setup_power_on_state.py`：自动发现并设置灯具上电行为为“记忆/previous”
@@ -187,9 +187,27 @@ pip install requests websocket-client urllib3 python-dotenv
 
 ## ESPHome
 
-- `esphome/trmnl_dashboard.yaml`：TRMNL（ESP32-S3）信息屏配置
-- 依赖 HA 中的天气模板传感器（见 `setup_weather_forecast.py`）与多类实体数据
+- `esphome/trmnl_dashboard.yaml`：TRMNL（ESP32-S3）黑白电子墨水屏
+- `esphome/xiao-epaper-e6.yaml`：XIAO ESP32-S3 + 7.3" Spectra 6 六色电子墨水屏
+- 两个固件均通过 `image/platform: online_image` 拉取 HA `/local/eink/` 下的渲染图，并向 HA 暴露 `Refresh Dashboard` template button
 - 字体与像素图资源位于 `esphome/fonts/`、`esphome/images/`
+
+### 电子墨水屏控制边界
+
+本仓库只持久化 Home Assistant 侧配置：ESPHome 固件、两个 dashboard
+selector、三个刷新按钮，以及首页唯一的“电子墨水屏” section。实际图像渲染、自动轮播、
+helper 按钮轮询、部署图片和触发屏幕刷新都运行在
+`/root/epaper-dashboard`，入口为 `renderer/ha_control.py`。
+
+`scripts/setup_dashboard.py` 可重建以下 helper；两个 selector 均包含“自动轮播 · Auto
+Rotate”及 17 个固定 dashboard 选项，共 18 个选项。重复运行脚本会更新已有 helper 和同一份代码生成的
+首页 section，不会主动改变 selector 当前值。
+
+- `input_select.e_paper_bw_dashboard`
+- `input_select.e_paper_e6_dashboard`
+- `input_button.e_paper_refresh_bw`
+- `input_button.e_paper_refresh_e6`
+- `input_button.e_paper_refresh_all`
 
 ## 说明
 

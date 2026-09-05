@@ -1,0 +1,118 @@
+# XIAO ESP32-S3 + Good Display GDEP073E01 (7.3" E Ink Spectra 6 / E6, 800x480)
+# Driver board: GYS DEPG0730-Tboard-V01 (DESPI-C73 equiv, onboard boost).
+# BS0 tied to GND on the T-board => 4-wire SPI mode.
+#
+# Wiring (XIAO pin -> function):
+#   GPIO7  (D8)  -> SCL / SCK
+#   GPIO9  (D10) -> SDA / MOSI
+#   GPIO4  (D3)  -> CS
+#   GPIO3  (D2)  -> DC     (NOTE: strapping pin; move to D6/D7 if boot flakes)
+#   GPIO2  (D1)  -> RES
+#   GPIO1  (D0)  -> BUSY
+#   3V3 -> VCI ; GND -> board GND + BS0
+#
+# epaper_spi is built into ESPHome (>=2026.x); no external_components needed.
+# busy_pin MUST be inverted:true — required by the E6 panel driver.
+
+esphome:
+  name: xiao-epaper-e6
+  friendly_name: XIAO E-Paper E6
+  on_boot:
+    priority: -100
+    then:
+      - wait_until:
+          condition:
+            wifi.connected:
+      - delay: 3s
+      - component.update: dash_img   # first download once WiFi is up
+
+esp32:
+  board: seeed_xiao_esp32s3
+  framework:
+    type: esp-idf
+
+# Octal (8-line) PSRAM on the XIAO ESP32-S3. Required: the 800x480 six-color
+# framebuffer will not fit in internal RAM.
+psram:
+  mode: octal
+  speed: 80MHz
+
+logger:
+  level: VERBOSE  # temporary: watch the epaper state machine / BUSY handling
+  # esp32_s3 default hardware_uart is USB_SERIAL_JTAG = the XIAO's native USB-C.
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "XIAO E6 Fallback Hotspot"
+    password: !secret ap_password
+
+captive_portal:
+
+# ── Pull the HA-rendered six-colour dashboard PNG ────────────────────────────
+# /root/epaper-dashboard renders it with pure INK colours and deploys it to
+# /config/www/eink/dashboard_e6.png.
+http_request:
+  useragent: esphome-xiao-e6
+  timeout: 20s
+
+image:
+  - platform: online_image
+    url: "http://192.168.50.154:8123/local/eink/dashboard_e6.png"
+    id: dash_img
+    format: PNG
+    type: RGB565          # decoded in PSRAM; pure bucket colours survive 5-6-5
+    update_interval: never # driven by on_boot + the interval below
+    on_download_finished:
+      - component.update: epaper
+    on_error:
+      - logger.log: "e6: dashboard image download failed"
+
+# Re-fetch every 10 min (the server re-renders on its own schedule). E6 full
+# refresh is slow (~18s) and wears the panel — don't refresh faster.
+interval:
+  - interval: 10min
+    then:
+      - component.update: dash_img
+
+# Exposed to Home Assistant so /root/epaper-dashboard/renderer/ha_control.py
+# can wake the panel immediately after replacing dashboard_e6.png.
+button:
+  - platform: template
+    name: "Refresh Dashboard"
+    id: refresh_dashboard
+    icon: "mdi:refresh"
+    on_press:
+      - component.update: dash_img
+
+spi:
+  clk_pin: GPIO7
+  mosi_pin: GPIO9
+
+display:
+  - platform: epaper_spi
+    model: 7.3in-Spectra-E6
+    id: epaper
+    cs_pin: GPIO4
+    dc_pin: GPIO3
+    reset_pin: GPIO2
+    busy_pin:
+      number: GPIO1
+      inverted: true
+      # Match the vendor preset for this exact panel (Seeed-reTerminal-E1002).
+      mode:
+        input: true
+        pullup: true
+    rotation: 0
+    update_interval: never  # refreshed only when a new image finishes downloading
+    lambda: |-
+      it.image(0, 0, id(dash_img));

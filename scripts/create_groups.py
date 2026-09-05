@@ -219,8 +219,10 @@ groups = {
         "light.intelligent_drive_power_supply_5",        # 格栅灯
         "light.090615_cn_2000281237_milg05_s_2_light",   # 射灯1
         "light.090615_cn_2000196741_milg05_s_2_light",   # 射灯2
-        "light.linp_cn_949847136_ld6bcw_s_2_light",      # 存在筒射灯
         "light.lemesh_cn_2001035175_wy0d02_s_2_light",   # 入口灯带
+    ],
+    "次卧次卫门口灯光": [
+        "light.linp_cn_949847136_ld6bcw_s_2_light",      # 人体存在筒射灯
         "light.moes_matter_light",                        # 红色装饰灯
     ],
     "次卫灯光": [
@@ -270,6 +272,7 @@ groups = {
         "light.zhu_wo_deng_guang",                          # 主卧灯光组
         "light.zhu_wei_deng_guang",                         # 主卫灯光组
         "light.ci_wo_deng_guang",                           # 次卧灯光组
+        "light.ci_wo_ci_wei_men_kou_deng_guang",            # 次卧次卫门口灯光组
         "light.ci_wei_deng_guang",                          # 次卫灯光组
         "light.shu_fang_deng_guang",                        # 书房灯光组
         "light.yang_tai_deng_guang",                        # 阳台灯光组

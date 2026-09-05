@@ -1,10 +1,10 @@
 # TRMNL 7.5" e-paper — server-rendered dashboard.
 #
 # Rendering moved OFF-device: HA serves a pre-rendered 800x480 1-bit PNG at
-# /local/eink/dashboard.png (built by scripts/eink/render.py + deploy.py). The
-# panel just downloads it via `online_image` and blits it full-screen. This lets
-# arbitrary Chinese news text + Pokémon sprites render server-side, instead of
-# pre-declaring every glyph on-device.
+# /local/eink/dashboard.png (built and rotated by /root/epaper-dashboard). The
+# panel just downloads it via `image/platform: online_image` and blits it
+# full-screen. This lets arbitrary Chinese text and artwork render server-side,
+# instead of pre-declaring every glyph on-device.
 #
 # Previous on-device lambda renderer: see git history (commit be2cdc5).
 
@@ -61,8 +61,9 @@ http_request:
   useragent: esphome-trmnl
   timeout: 15s
 
-online_image:
-  - url: "http://192.168.50.154:8123/local/eink/dashboard.png"
+image:
+  - platform: online_image
+    url: "http://192.168.50.154:8123/local/eink/dashboard.png"
     id: dashboard_img
     format: PNG
     type: BINARY
@@ -76,6 +77,16 @@ online_image:
 interval:
   - interval: 10min
     then:
+      - component.update: dashboard_img
+
+# Exposed to Home Assistant so /root/epaper-dashboard/renderer/ha_control.py
+# can wake the panel immediately after replacing dashboard.png.
+button:
+  - platform: template
+    name: "Refresh Dashboard"
+    id: refresh_dashboard
+    icon: "mdi:refresh"
+    on_press:
       - component.update: dashboard_img
 
 # ── E-paper panel ────────────────────────────────────────────────────────────

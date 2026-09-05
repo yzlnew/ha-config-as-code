@@ -105,7 +105,7 @@ SWITCHES = [
         ],
     },
     {
-        "id": "2022705523", "type": "w1", "name": "入口单开", "area": "次卧",
+        "id": "2022705523", "type": "w1", "name": "入口单开", "area": "次卧次卫门口",
         "mode_entities": [
             "select.xiaomi_cn_2022705523_w1_mode_p_2_2",
         ],
@@ -187,8 +187,10 @@ AREA_LIGHTS = {
         "light.intelligent_drive_power_supply_5",            # 格栅灯
         "light.090615_cn_2000281237_milg05_s_2_light",       # 射灯 1
         "light.090615_cn_2000196741_milg05_s_2_light",       # 射灯 2
-        "light.linp_cn_949847136_ld6bcw_s_2_light",         # 存在筒射灯
-        "light.moes_matter_light",                           # 装饰灯
+    ],
+    "次卧次卫门口": [
+        "light.linp_cn_949847136_ld6bcw_s_2_light",         # 人体存在筒射灯
+        "light.moes_matter_light",                           # 红色装饰灯
     ],
     "次卫": [
         "light.linp_cn_949833026_ld6bcw_s_2_light",         # 存在筒射灯
@@ -265,6 +267,7 @@ AREA_ID_MAP = {
     "厨房": "kitchen",
     "主卧": "master_bedroom",
     "次卧": "guest_bedroom",
+    "次卧次卫门口": "guest_room_entrance",
     "主卫": "master_bath",
     "次卫": "guest_bath",
     "书房": "study",
@@ -550,6 +553,10 @@ DISPLAY_BY_UNIQUE_ID = {
     "btn_guest_bedroom_left_longpress": {
         "name": "开关绑定：次卧全关", "icon": "mdi:light-switch-off",
         "desired_entity_id": "automation.btn_guest_bedroom_left_longpress",
+    },
+    "btn_guest_room_entrance_click": {
+        "name": "开关绑定：次卧次卫门口灯光切换", "icon": "mdi:light-switch",
+        "desired_entity_id": "automation.btn_guest_room_entrance_click",
     },
     "btn_master_bath_left_click": {
         "name": "开关绑定：主卫灯光切换", "icon": "mdi:light-switch",
@@ -921,6 +928,15 @@ add_auto("btn_guest_bedroom_left_longpress",
          "Guest bedroom left/key long-press -> all lights off",
          triggers_for(gb_switches, "left", "long_press"),
          make_full_off_action("次卧"))
+
+# --- 次卧次卫门口 ---
+guest_room_entrance_switches = area_switches["次卧次卫门口"]
+
+add_auto("btn_guest_room_entrance_click",
+         "开关绑定：次卧次卫门口灯光切换",
+         "入口单开单击时切换人体存在筒射灯和红色装饰灯",
+         triggers_for(guest_room_entrance_switches, "left", "click"),
+         make_toggle_action(AREA_LIGHTS["次卧次卫门口"]))
 
 # --- 主卫 ---
 mbath_switches = area_switches["主卫"]

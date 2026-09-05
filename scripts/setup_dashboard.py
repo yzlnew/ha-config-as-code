@@ -7,6 +7,63 @@ import ssl
 from ha_api import HA_URL, TOKEN
 
 
+# E-paper renderer/control ownership lives in /root/epaper-dashboard. Keep this
+# catalogue in sync with renderer.ha_control.DASHBOARD_CHOICES there.
+EPAPER_DASHBOARD_CHOICES = [
+    "自动轮播 · Auto Rotate",
+    "日照与音乐 · Daylight + Music",
+    "音乐歌词 · Music Lyric",
+    "Codex 用量 · Codex Usage",
+    "混合仪表 · Mixed",
+    "每日概览 · Daily",
+    "四象限 · Quadrants",
+    "贡献图全屏 · Repo Full",
+    "贡献图与简报 · Repo + Brief",
+    "贡献图与状态 · Repo + Status",
+    "报刊 · Editorial",
+    "工作台 · Workbench",
+    "图鉴 · Catalogue",
+    "生活状态 · Timeframe",
+    "Nothing",
+    "画廊 · Gallery",
+    "海报 · Poster",
+    "数学艺术 · Math Art",
+]
+
+EPAPER_SELECT_HELPERS = {
+    "input_select.e_paper_bw_dashboard": {
+        "name": "E-paper BW dashboard",
+        "display_name": "黑白屏 Dashboard",
+        "icon": "mdi:monitor",
+    },
+    "input_select.e_paper_e6_dashboard": {
+        "name": "E-paper E6 dashboard",
+        "display_name": "六色屏 Dashboard",
+        "icon": "mdi:palette-outline",
+    },
+}
+
+EPAPER_BUTTON_HELPERS = {
+    "input_button.e_paper_refresh_bw": {
+        "name": "E-paper refresh BW",
+        "display_name": "刷新黑白电子墨水屏",
+        "icon": "mdi:refresh",
+    },
+    "input_button.e_paper_refresh_e6": {
+        "name": "E-paper refresh E6",
+        "display_name": "刷新六色电子墨水屏",
+        "icon": "mdi:refresh",
+    },
+    "input_button.e_paper_refresh_all": {
+        "name": "E-paper refresh all",
+        "display_name": "刷新全部电子墨水屏",
+        "icon": "mdi:refresh-circle",
+    },
+}
+
+EPAPER_RENDER_CAMERA = "camera.e_paper_e6_rendered_dashboard"
+
+
 # ============================================================
 # Helper functions — Original card types (kept for compatibility)
 # ============================================================
@@ -38,6 +95,101 @@ def section(title, cards, columns=None):
 def grid_card(card, grid_columns):
     card.setdefault("layout_options", {})["grid_columns"] = grid_columns
     return card
+
+
+def ws_require(ws, message_id, payload):
+    """Send one HA WebSocket request and return (result, next_message_id)."""
+    ws.send(json.dumps({"id": message_id, **payload}))
+    while True:
+        response = json.loads(ws.recv())
+        if response.get("id") == message_id:
+            break
+    if not response.get("success"):
+        raise RuntimeError(
+            f"{payload['type']} failed: {response.get('error', {})}"
+        )
+    return response.get("result"), message_id + 1
+
+
+def ensure_epaper_helpers(ws, message_id):
+    """Idempotently create/update e-paper helpers without changing selections."""
+    selects, message_id = ws_require(
+        ws, message_id, {"type": "input_select/list"}
+    )
+    selects_by_id = {item.get("id"): item for item in (selects or [])}
+    for entity_id, spec in EPAPER_SELECT_HELPERS.items():
+        helper_id = entity_id.removeprefix("input_select.")
+        existing = selects_by_id.get(helper_id)
+        if existing:
+            payload = {
+                "type": "input_select/update",
+                "input_select_id": helper_id,
+                "name": spec["name"],
+                "icon": spec["icon"],
+                "options": EPAPER_DASHBOARD_CHOICES,
+            }
+            action = "updated"
+        else:
+            payload = {
+                "type": "input_select/create",
+                "name": spec["name"],
+                "icon": spec["icon"],
+                "options": EPAPER_DASHBOARD_CHOICES,
+            }
+            action = "created"
+        _, message_id = ws_require(ws, message_id, payload)
+        print(f"   {action}: {entity_id}")
+
+    buttons, message_id = ws_require(
+        ws, message_id, {"type": "input_button/list"}
+    )
+    buttons_by_id = {item.get("id"): item for item in (buttons or [])}
+    for entity_id, spec in EPAPER_BUTTON_HELPERS.items():
+        helper_id = entity_id.removeprefix("input_button.")
+        existing = buttons_by_id.get(helper_id)
+        if existing:
+            payload = {
+                "type": "input_button/update",
+                "input_button_id": helper_id,
+                "name": spec["name"],
+                "icon": spec["icon"],
+            }
+            action = "updated"
+        else:
+            payload = {
+                "type": "input_button/create",
+                "name": spec["name"],
+                "icon": spec["icon"],
+            }
+            action = "created"
+        _, message_id = ws_require(ws, message_id, payload)
+        print(f"   {action}: {entity_id}")
+
+    registry, message_id = ws_require(
+        ws, message_id, {"type": "config/entity_registry/list"}
+    )
+    registry_ids = {entry.get("entity_id") for entry in (registry or [])}
+    for entity_id, spec in {
+        **EPAPER_SELECT_HELPERS,
+        **EPAPER_BUTTON_HELPERS,
+    }.items():
+        if entity_id not in registry_ids:
+            raise RuntimeError(
+                f"Expected helper {entity_id} was not created; "
+                "check Home Assistant slug generation"
+            )
+        _, message_id = ws_require(
+            ws,
+            message_id,
+            {
+                "type": "config/entity_registry/update",
+                "entity_id": entity_id,
+                "name": spec["display_name"],
+                "icon": spec["icon"],
+            },
+        )
+
+    return message_id
 
 
 # ============================================================
@@ -587,6 +739,91 @@ def mushroom_select(entity, name=None, icon=None, icon_color=None, style=None):
     return card
 
 
+def epaper_refresh_card(
+    entity_id,
+    *,
+    primary,
+    secondary,
+    icon,
+    color,
+    grid_columns=2,
+):
+    return {
+        "type": "custom:mushroom-template-card",
+        "entity": entity_id,
+        "primary": primary,
+        "secondary": secondary,
+        "icon": icon,
+        "icon_color": color,
+        "tap_action": {
+            "action": "call-service",
+            "service": "input_button.press",
+            "target": {"entity_id": entity_id},
+        },
+        "hold_action": {"action": "more-info"},
+        "layout_options": {"grid_columns": grid_columns},
+        "card_mod": {"style": MD3_STYLE},
+    }
+
+
+def epaper_control_section():
+    """Persistent homepage controls for both e-paper panels."""
+    return section("电子墨水屏", [
+        {
+            "type": "picture-entity",
+            "entity": EPAPER_RENDER_CAMERA,
+            "name": "六色屏实际渲染",
+            "show_name": True,
+            "show_state": False,
+            "camera_view": "auto",
+            "tap_action": {"action": "more-info"},
+            "hold_action": {"action": "none"},
+            "layout_options": {"grid_columns": 4},
+            "card_mod": {"style": MD3_STYLE},
+        },
+        grid_card(
+            mushroom_select(
+                "input_select.e_paper_bw_dashboard",
+                "黑白屏内容",
+                "mdi:monitor",
+                "grey",
+            ),
+            4,
+        ),
+        grid_card(
+            mushroom_select(
+                "input_select.e_paper_e6_dashboard",
+                "六色屏内容",
+                "mdi:palette-outline",
+                "deep-orange",
+            ),
+            4,
+        ),
+        epaper_refresh_card(
+            "input_button.e_paper_refresh_bw",
+            primary="刷新黑白屏",
+            secondary="按当前选项重新渲染",
+            icon="mdi:monitor-arrow-down-variant",
+            color="grey",
+        ),
+        epaper_refresh_card(
+            "input_button.e_paper_refresh_e6",
+            primary="刷新六色屏",
+            secondary="完整刷新约 18 秒",
+            icon="mdi:palette-advanced",
+            color="deep-orange",
+        ),
+        epaper_refresh_card(
+            "input_button.e_paper_refresh_all",
+            primary="刷新两块屏幕",
+            secondary="分别渲染并推送当前选项",
+            icon="mdi:refresh-circle",
+            color="amber",
+            grid_columns=4,
+        ),
+    ])
+
+
 def tile_toggle(entity, name=None, icon=None):
     card = {
         "type": "tile",
@@ -704,115 +941,37 @@ def climate_popup_action(title, climate_cards):
     return browser_mod_popup(title, climate_cards)
 
 
-def claude_usage_card():
-    """Homepage card: Claude Code usage progress."""
-    entities = [_claude_5h_usage, _claude_7d_usage, _claude_extra_usage]
-
-    title_js = (
-        "[[["
-        " const changed = states['" + _claude_5h_usage + "']?.last_changed;"
-        " let syncText = '等待同步';"
-        " if (changed) {"
-        "   const d = new Date(changed);"
-        "   if (!Number.isNaN(d.getTime())) {"
-        "     syncText = `更新 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;"
-        "   }"
-        " }"
-        " return `<div><div style=\"font-size:16px;font-weight:700;color:var(--primary-text-color)\">Claude Code 配额</div><div style=\"margin-top:4px;font-size:12px;color:var(--secondary-text-color)\">${syncText}</div></div>`;"
-        " ]]]"
-    )
-
-    badge_js = (
-        "[[["
-        " const extra = states['" + _claude_extra_usage + "'];"
-        " const enabled = extra?.attributes?.enabled;"
-        " const used = Number(extra?.state);"
-        " const limit = Number(extra?.attributes?.monthly_limit);"
-        " const displayLimit = Number.isFinite(limit) ? limit / 100 : NaN;"
-        " if (enabled === false) {"
-        "   return `<div style=\"padding:6px 10px;border-radius:999px;background:var(--secondary-background-color);font-size:12px;font-weight:600;color:var(--secondary-text-color)\">额外未启用</div>`;"
-        " }"
-        " if (!Number.isFinite(used)) {"
-        "   return `<div style=\"padding:6px 10px;border-radius:999px;background:var(--secondary-background-color);font-size:12px;font-weight:600;color:var(--secondary-text-color)\">等待数据</div>`;"
-        " }"
-        " const usedText = `$${used.toFixed(2)}`;"
-        " const limitText = Number.isFinite(displayLimit) && displayLimit > 0 ? ` / $${displayLimit.toFixed(0)}` : '';"
-        " return `<div style=\"padding:6px 10px;border-radius:999px;background:var(--secondary-background-color);font-size:12px;font-weight:700;color:var(--primary-text-color)\">${usedText}${limitText}</div>`;"
-        " ]]]"
-    )
-
-    progress_js = (
-        "[[["
-        " const sensor = (entityId) => states[entityId] || null;"
-        " const clamp = (value) => Math.max(0, Math.min(100, value));"
-        " const getPct = (entityId) => {"
-        "   const raw = Number(sensor(entityId)?.state);"
-        "   return Number.isFinite(raw) ? clamp(raw) : null;"
-        " };"
-        " const formatReset = (entityId) => {"
-        "   const raw = sensor(entityId)?.attributes?.resets_at;"
-        "   if (!raw) return '重置时间待同步';"
-        "   const d = new Date(raw);"
-        "   if (Number.isNaN(d.getTime())) return '重置时间待同步';"
-        "   return `重置 ${String(d.getMonth() + 1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;"
-        " };"
-        " const renderRow = (label, entityId, fill) => {"
-        "   const value = getPct(entityId);"
-        "   const width = value === null ? 0 : value;"
-        "   const pctText = value === null ? '--%' : `${Math.round(value)}%`;"
-        "   return `<div style=\"display:grid;gap:6px\">"
-        "     <div style=\"display:flex;align-items:center;justify-content:space-between;gap:12px\">"
-        "       <span style=\"font-size:13px;color:var(--secondary-text-color)\">${label}</span>"
-        "       <span style=\"font-size:14px;font-weight:700;color:var(--primary-text-color)\">${pctText}</span>"
-        "     </div>"
-        "     <div style=\"height:10px;border-radius:999px;background:var(--secondary-background-color);overflow:hidden\">"
-        "       <div style=\"height:100%;width:${width}%;border-radius:999px;background:${fill}\"></div>"
-        "     </div>"
-        "     <div style=\"font-size:11px;color:var(--secondary-text-color)\">${formatReset(entityId)}</div>"
-        "   </div>`;"
-        " };"
-        " return `<div style=\"display:grid;gap:14px\">${renderRow('5 小时窗口', '" + _claude_5h_usage + "', 'var(--primary-color)')}${renderRow('7 天窗口', '" + _claude_7d_usage + "', 'var(--accent-color, var(--primary-color))')}</div>`;"
-        " ]]]"
-    )
-
+def master_bedroom_sleep_card():
+    """One-tap sleep curve with stage-aware status text."""
+    sleep_toggle = "input_boolean.master_bedroom_sleep"
+    master_ac = "climate.lemesh_cn_2000792363_air02"
     return {
-        "type": "custom:button-card",
-        "entity": _claude_5h_usage,
-        "triggers_update": entities,
-        "show_icon": False,
-        "show_name": False,
-        "show_state": False,
-        "tap_action": {"action": "more-info"},
-        "custom_fields": {
-            "icon_area": (
-                "[[[ return `<div style=\"width:56px;height:56px;border-radius:18px;background:var(--secondary-background-color);display:flex;align-items:center;justify-content:center\"><ha-icon icon='si:claude' style='--mdc-icon-size:30px;color:var(--primary-color)'></ha-icon></div>`; ]]]"
-            ),
-            "title_area": title_js,
-            "extra_badge": badge_js,
-            "usage_area": progress_js,
-        },
-        "styles": {
-            "grid": [
-                {"grid-template-areas": "'icon_area title_area extra_badge' 'usage_area usage_area usage_area'"},
-                {"grid-template-columns": "56px minmax(0, 1fr) auto"},
-                {"gap": "14px"},
-                {"align-items": "start"},
-            ],
-            "card": [
-                {"padding": "18px"},
-                {"border-radius": "var(--ha-card-border-radius, 28px)"},
-                {"background": "var(--ha-card-background)"},
-                {"box-shadow": "none !important"},
-                {"border": "none !important"},
-            ],
-            "custom_fields": {
-                "icon_area": [{"grid-area": "icon_area"}],
-                "title_area": [{"grid-area": "title_area"}, {"align-self": "center"}],
-                "extra_badge": [{"grid-area": "extra_badge"}, {"justify-self": "end"}, {"align-self": "center"}],
-                "usage_area": [{"grid-area": "usage_area"}, {"width": "100%"}],
-            },
-        },
-        "layout_options": {"grid_columns": 4},
+        "type": "custom:mushroom-template-card",
+        "entity": sleep_toggle,
+        "primary": "主卧舒眠",
+        "secondary": (
+            "{% if is_state('" + sleep_toggle + "', 'on') %}"
+            "{% set elapsed = (as_timestamp(now()) - as_timestamp(states['" + sleep_toggle + "'].last_changed)) / 3600 %}"
+            "{% if elapsed < 3 %}入睡阶段 · 26°C"
+            "{% elif elapsed < 5 %}安睡阶段 · 27°C"
+            "{% else %}晨起缓和 · 28°C{% endif %}"
+            "{% else %}26 → 27 → 28°C · 7小时{% endif %}"
+        ),
+        "icon": "mdi:sleep",
+        "icon_color": (
+            "{% if is_state('" + sleep_toggle + "', 'on') %}"
+            "indigo{% else %}disabled{% endif %}"
+        ),
+        "badge_icon": (
+            "{% if is_state('" + sleep_toggle + "', 'on') %}"
+            "mdi:air-conditioner{% endif %}"
+        ),
+        "badge_color": (
+            "{% if is_state('" + master_ac + "', 'cool') %}"
+            "blue{% else %}disabled{% endif %}"
+        ),
+        "tap_action": {"action": "toggle"},
+        "hold_action": {"action": "more-info"},
         "card_mod": {"style": MD3_STYLE},
     }
 
@@ -826,9 +985,6 @@ _temp = "sensor.xiaomi_cn_2008215373_ua3a_temperature_p_3_7"
 _humi = "sensor.xiaomi_cn_2008215373_ua3a_relative_humidity_p_3_1"
 _pm25 = "sensor.xiaomi_cn_2008215373_ua3a_pm2_5_density_p_3_4"
 _co2 = "sensor.xiaomi_cn_2008215373_ua3a_co2_density_p_3_8"
-_claude_5h_usage = "sensor.claude_code_5h_yong_liang"
-_claude_7d_usage = "sensor.claude_code_7d_yong_liang"
-_claude_extra_usage = "sensor.claude_code_e_wai_yong_liang"
 _matter_offline_count = "sensor.matter_light_offline_count"
 _matter_recovery_pending = "input_boolean.matter_recovery_pending"
 _matter_recovery_scheduled_at = "input_datetime.matter_recovery_scheduled_at"
@@ -966,6 +1122,108 @@ _bg_ac = "climate.lemesh_cn_2000794495_air02"
 _west_kitchen_ac = "climate.lemesh_cn_2000792371_air02"
 _floor_heat = "climate.tofan_cn_948856816_wk01"
 
+# ============================================================
+# View 1: 快捷 (Quick controls)
+# ============================================================
+
+quick_view = {
+    "title": "快捷",
+    "path": "quick",
+    "icon": "mdi:gesture-tap-button",
+    "type": "sections",
+    "sections": [
+        section("一键切换", [
+            mushroom_template(
+                "会客模式", "mdi:account-group", "amber",
+                primary="会客模式",
+                tap_action={
+                    "action": "call-service",
+                    "service": "scene.turn_on",
+                    "data": {"entity_id": "scene.hui_ke_mo_shi"},
+                },
+            ),
+            mushroom_template(
+                "影音模式", "mdi:movie-open", "blue",
+                primary="影音模式",
+                tap_action={
+                    "action": "call-service",
+                    "service": "scene.turn_on",
+                    "data": {"entity_id": "scene.ying_yin_mo_shi"},
+                },
+            ),
+            mushroom_template(
+                "睡眠模式", "mdi:weather-night", "indigo",
+                primary="睡眠模式",
+                tap_action={
+                    "action": "call-service",
+                    "service": "scene.turn_on",
+                    "data": {"entity_id": "scene.shui_mian_mo_shi"},
+                },
+            ),
+        ]),
+        section("点亮空间", [
+            mushroom_light("light.suo_you_deng_guang", "全屋", "mdi:home-lightbulb", is_group=True),
+            mushroom_light("light.ke_ting_deng_guang", "客厅", "mdi:sofa", is_group=True),
+        ]),
+        section("调好温度", [
+            mushroom_template(
+                "客厅", "mdi:sofa", "orange",
+                primary="客厅",
+                secondary="{{ state_attr('" + _living_ac + "', 'current_temperature') }}° · {{ states('" + _living_ac + "') }}",
+                tap_action=climate_popup_action("客厅温控", [
+                    mushroom_climate_expanded(_living_ac, "客厅空调"),
+                    mushroom_climate_expanded(_bg_ac, "背景空调"),
+                    mushroom_climate_expanded(_west_kitchen_ac, "西厨空调"),
+                    mushroom_climate_expanded(_floor_heat, "地暖温控"),
+                    mushroom_fan_expanded("fan.tofan_cn_948856816_wk01_s_3_air_fresh", "新风机"),
+                ]),
+            ),
+            mushroom_template(
+                "主卧", "mdi:bed-king", "deep-purple",
+                primary="主卧",
+                secondary="{{ state_attr('" + _master_ac + "', 'current_temperature') }}° · {{ states('" + _master_ac + "') }}",
+                tap_action=climate_popup_action("主卧温控", [
+                    mushroom_climate_expanded(_master_ac, "主卧空调"),
+                ]),
+            ),
+            master_bedroom_sleep_card(),
+            mushroom_template(
+                "次卧", "mdi:bed", "blue",
+                primary="次卧",
+                secondary="{{ state_attr('" + _guest_ac + "', 'current_temperature') }}° · {{ states('" + _guest_ac + "') }}",
+                tap_action=climate_popup_action("次卧温控", [
+                    mushroom_climate_expanded(_guest_ac, "次卧空调"),
+                ]),
+            ),
+            mushroom_template(
+                "书房", "mdi:bookshelf", "green",
+                primary="书房",
+                secondary="{{ state_attr('" + _study_ac + "', 'current_temperature') }}° · {{ states('" + _study_ac + "') }}",
+                tap_action=climate_popup_action("书房温控", [
+                    mushroom_climate_expanded(_study_ac, "书房空调"),
+                ]),
+            ),
+        ]),
+        section("空气流动", [
+            mushroom_fan("fan.xiaomi_cn_2008215373_ua3a_s_2_air_purifier", "空气净化器"),
+            mushroom_fan("fan.tofan_cn_948856816_wk01_s_3_air_fresh", "新风机"),
+        ]),
+        section("打开与合上", [
+            mushroom_cover("cover.linp_cn_2079472416_ec1db_s_2_curtain", "客厅布帘"),
+            mushroom_cover("cover.linp_cn_2079495198_ec1db_s_2_curtain", "客厅纱帘"),
+            mushroom_cover("cover.bean_cn_1158897918_ct06_s_2_curtain", "主卧窗帘"),
+            mushroom_cover("cover.bean_cn_1158901062_ct06_s_2_curtain", "次卧窗帘"),
+            mushroom_cover("cover.xiaomi_cn_967167649_lyj3xs_s_2_airer", "晾衣架"),
+        ]),
+        section("播放", [
+            mushroom_media("media_player.tcl_85q10l_pro", "TCL 电视"),
+            mushroom_media("media_player.xi_chu", "西厨音箱"),
+            mushroom_media("media_player.xiaomi_cn_979970247_oh2", "小爱音箱"),
+            mushroom_media("media_player.zhu_wo", "主卧音箱"),
+        ]),
+    ],
+}
+
 home_view = {
     "title": "首页",
     "path": "home",
@@ -1025,7 +1283,10 @@ home_view = {
             },
         ]),
 
-        # --- Section 1: 总览 ---
+        # --- Section 1: 电子墨水屏 ---
+        epaper_control_section(),
+
+        # --- Section 2: 总览 ---
         section("总览", [
             # Weather & Environment Chips Combined
             mushroom_chips([
@@ -1064,8 +1325,6 @@ home_view = {
             ]),
 
             matter_lights_status_card(),
-
-            claude_usage_card(),
 
             # Temperature & Humidity Graph
             mini_graph(
@@ -1150,7 +1409,7 @@ home_view = {
             ),
         ]),
 
-        # --- Section 2: 全屋灯光控制 ---
+        # --- Section 3: 全屋灯光控制 ---
         section("全屋灯光控制", [
             mushroom_light("light.suo_you_deng_guang", "所有灯光", "mdi:home-lightbulb", is_group=True),
             mushroom_light("light.ke_ting_deng_guang", "客厅灯光组", "mdi:sofa", is_group=True),
@@ -1166,7 +1425,7 @@ home_view = {
             mushroom_light("light.quan_wu_fen_wei_deng_dai", "全屋氛围灯带", "mdi:led-strip-variant", is_group=True),
         ]),
 
-        # --- Section 3: 设备与影音 ---
+        # --- Section 4: 设备与影音 ---
         section("设备与影音", [
             mushroom_light("light.trytogo", "Trytogo", "mdi:lightbulb-group"),
             mushroom_light("light.esp32_d1_mini_moonside_moonside_lamp", "Moonside", "mdi:lamp"),
@@ -1305,8 +1564,12 @@ lighting_view = {
             mushroom_light("light.intelligent_drive_power_supply_5", "格栅灯", "mdi:light-recessed"),
             mushroom_light("light.090615_cn_2000281237_milg05_s_2_light", "射灯 1", "mdi:spotlight-beam"),
             mushroom_light("light.090615_cn_2000196741_milg05_s_2_light", "射灯 2", "mdi:spotlight-beam"),
-            mushroom_light("light.linp_cn_949847136_ld6bcw_s_2_light", "存在筒射灯", "mdi:motion-sensor"),
             mushroom_light("light.lemesh_cn_2001035175_wy0d02_s_2_light", "入口灯带", "mdi:led-strip"),
+        ]),
+        # --- 次卧次卫门口 ---
+        section("🚪 次卧次卫门口", [
+            mushroom_light("light.ci_wo_ci_wei_men_kou_deng_guang", "门口灯光组", "mdi:door-open", is_group=True),
+            mushroom_light("light.linp_cn_949847136_ld6bcw_s_2_light", "人体存在筒射灯", "mdi:motion-sensor"),
             mushroom_light("light.moes_matter_light", "红色装饰灯", "mdi:lava-lamp"),
         ]),
         # --- 次卫 ---
@@ -1426,9 +1689,12 @@ environment_view = {
         ]),
         # --- 次卧传感器 ---
         section("🛌 次卧", [
+            mushroom_entity("sensor.xiaomi_cn_2020906944_w1_temperature_p_2_7", "温度", "mdi:thermometer", "orange"),
+        ]),
+        # --- 次卧次卫门口传感器 ---
+        section("🚪 次卧次卫门口", [
             mushroom_entity("binary_sensor.linp_cn_949847136_ld6bcw_occupancy_status_p_5_1", "有人状态", "mdi:motion-sensor", "blue"),
             mushroom_entity("sensor.linp_cn_949847136_ld6bcw_illumination_p_5_5", "光照度", "mdi:brightness-5", "yellow"),
-            mushroom_entity("sensor.xiaomi_cn_2020906944_w1_temperature_p_2_7", "温度", "mdi:thermometer", "orange"),
         ]),
         # --- 次卫传感器 ---
         section("🚽 次卫", [
@@ -1477,6 +1743,7 @@ climate_view = {
         ]),
         # --- 主卧 ---
         section("🛏️ 主卧", [
+            master_bedroom_sleep_card(),
             mushroom_climate(_master_ac, "主卧空调"),
         ]),
         # --- 主卫浴霸 ---
@@ -2039,6 +2306,7 @@ laundry_view = {
     ]
 }
 views = [
+    quick_view,
     home_view,
     lighting_view,
     environment_view,
@@ -2084,9 +2352,12 @@ if msg["type"] != "auth_ok":
     ws.close()
     exit(1)
 
-# Step 3: Save lovelace config
+# Step 3: Ensure persistent e-paper helpers and registry display metadata
+next_message_id = ensure_epaper_helpers(ws, 1)
+
+# Step 4: Save lovelace config
 ws.send(json.dumps({
-    "id": 1,
+    "id": next_message_id,
     "type": "lovelace/config/save",
     "config": config,
 }))

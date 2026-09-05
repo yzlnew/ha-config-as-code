@@ -1,5 +1,10 @@
 # E-ink Dashboard — HA as server, panel as client
 
+> **当前运行边界：** 图像渲染、BW/E6 独立轮播、HA helper 按钮轮询与刷新控制器均运行在
+> `/root/epaper-dashboard`，入口是 `renderer/ha_control.py`。本目录保留旧版单色渲染、
+> 部署和 OpenDisplay 实验工具作为历史参考，不再是两块屏幕的生产轮播入口。HA 侧的
+> helper、Lovelace 首页 section 与 ESPHome 固件由本仓库维护。
+
 Server-rendered dashboard for the **TRMNL 7.5" e-paper panel** (ESP32-S3 +
 Waveshare 7.5" v2, 800×480 mono). HA renders a full image; the panel just
 displays it. Same renderer (`render.py`) feeds **two mutually-exclusive panel
